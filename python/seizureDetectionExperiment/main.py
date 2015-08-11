@@ -1,3 +1,4 @@
+import pdb
 import numpy as np
 import cv2
 from cv2 import imshow
@@ -46,7 +47,7 @@ def onVideoChange(index):
 jasf_cv.setTrackbar('video file', 0, len(videoFiles)-1, onCallBack = onVideoChange, window_name='settings')
 jasf.cv.setManyTrackbars(['th', 'max', 'delta', 'dilateSize', 'erodeSize', 'LRA'], [0, 100, 4, 5, 0, 1], [400, 400, 10, 21, 21, 2])
 jasf.cv.setManyTrackbars(['flow_lowTh', 'flow_upTh', 'flowConect_lowTh', 'flowConect_upTh'], [2, 30, 160, 10000], [50, 50, 1000, 10000])
-jasf.cv.setManyTrackbars(['connectivityFilterOn', 'magnitudeFilterOn'], [1, 1], [1,1], i=1)
+jasf.cv.setManyTrackbars(['connectivityFilterOn', 'magnitudeFilterOn'], [0, 0], [1,1], i=1)
 
 #####################################
 #Auxiliar Classes
@@ -305,6 +306,7 @@ while cam.isOpened():
     #-----------------------------------------------------------------
     #Step 5.2 keep track of the highest value of flow
     #-----------------------------------------------------------------
+    #compute flow magnitudes
     flow = newP - oldP
     flowNorm = np.linalg.norm(flow, axis = 1)
     #the following condition is necessary because not always the flow computation is successul.
@@ -315,16 +317,26 @@ while cam.isOpened():
         
     #this is used for plotting later
     iteration += 1
-
+    #-----------------------------------------------------------------
+    #Step 5.2.2 find 5% magnitude vectors
+    #-----------------------------------------------------------------
+    #sort flow endpoints according to its norm and get the last 5%(with highest magnitutes) 
+    sortingIndexes = flowNorm.argsort()
+    selectedIndexes = sortingIndexes[int(0.95*sortingIndexes.size):]
+    newP_5percent = newP[selectedIndexes]
+    oldP_5percent = oldP[selectedIndexes]
     #-----------------------------------------------------------------
     #Step 5.3 Draw flow and plot the highest magnitude vector
     #-----------------------------------------------------------------
     #the highest magnitude flow is paint as RED(0,0,255) while all the others are BLUE(255,0,0)
+    #the five percent highest magnitude vectors are painted as Green(0,255,0)
     #-----------------------------------------------------------------
     #draw every valid flow vector as blue
     mouseImg = flowUtil.draw_flow(flowInput, oldP, newP, (255,0,0), 1, 1, 2, th = 0.2)
     #if there is a highest magnitude to paint, paint it red
     if maxFlow_i != -1:
+        #first paint top 5 percent magnitude vectors as green and then the highest one as RED
+        mouseImg = flowUtil.draw_flow(mouseImg, oldP_5percent, newP_5percent, (0,255,0), 1, 1, 2, th = 2.0)
         mouseImg = flowUtil.draw_flow(mouseImg, np.array([oldP[maxFlow_i]]), np.array([newP[maxFlow_i]]), (0,0,255), 1, 1, 2, th = 2.0)
     if iteration % 10 == 0 and control_show_plot:
         #we only plot every 10 iterations so we don't slow down the program too much. Also, we reduce by 10 the number
