@@ -1,0 +1,178 @@
+\documentclass{beamer}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage{graphicx}			%para imagens
+\usepackage{epstopdf} 			%resolve problemas eps-pdf
+\usepackage{fancyhdr}			% para o cabeçalho bonito
+\usepackage{caption}				%para legendas
+\usepackage{placeins} 			%controlar o lugar dos floats
+\usepackage{color}
+\usepackage{url}
+\renewcommand{\UrlFont}{\tiny}
+\usepackage{relsize}
+\usepackage{hyperref}
+
+\usetheme{Dresden}
+\usecolortheme{orchid}
+\setbeamertemplate{navigation symbols}{}
+
+\newcommand{\HRule}{\rule{\linewidth}{0.5mm}}
+
+\title{Summer Research Project \\  Video Based Mouse Seizure Detection}
+\author{Juarez Sampaio}
+\titlegraphic{\leavevmode\smash{\raisebox{5.5cm}{\includegraphics[width=0.2\textwidth]{logo}}}}
+\institute{Rice University}
+\date{\today}
+
+
+\begin{document}
+\begin{frame}
+        \titlepage
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Content}
+  \begin{itemize}
+     \item A few concepts in image processing and computer vision:
+       \begin{itemize}
+           \item a few morphological operations
+       \end{itemize}
+     \item Results of the week
+       \begin{itemize}
+           \item Filtering Flow by connectivity
+           \item Hand writing line detection criteria
+       \end{itemize}
+  \end{itemize}
+\end{frame}
+
+
+\section{Background Concepts}
+\subsection{Morphological Transformation}
+
+\begin{frame}
+  \frametitle{\secname : \subsecname}
+  \begin{definition}
+    Morphological Transformations are simple transformations based on shape. They're usually performed on a binary input
+    and require the definition of a \textbf{structuring element}, which decides the extent and nature of the operation.
+  \end{definition}
+
+  \begin{itemize}
+      \item they're usually used to enhance some property of the image or to reduce noise.
+      \item Morphological transformations are one of the techniques broadly used during this work.
+      \item They can be seen as the \textbf{generalized convolution} where a window is slided through the image and some
+        operation is realized at each pixel.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{\subsecname : Erosion}
+  \begin{definition}
+    The kernel is a matrix filled with ones and zeros. One means we care about the pixel position and zero means don't
+    cares. Center the kernel at the pixel to be evaluated. If the all the positions marked as ones in the kernel are
+    also ones in the image, the center pixel is one, otherwise it is zero.
+  \end{definition}
+  \begin{itemize}
+      \item The kernel is usually a small matrix filled with ones. 
+      \item It can also be a square matrix where the ones in it approximate an ellipse
+      \item This operation will reduce the area of the foreground. If the foreground was initially noise and had small
+        area, it will disappear.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+      \begin{figure}
+        \centering
+        \includegraphics[width = 0.6\textwidth, keepaspectratio]{./eroisionSample.png}
+        \caption{Effect of erosion with a 3x3 kernel. \footnote{from http://homepages.inf.ed.ac.uk/rbf/HIPR2/erode.htm}}
+      \end{figure}
+\end{frame}
+
+
+\begin{frame}
+  \frametitle{\subsecname : Dilation}
+  \begin{definition}
+    Similar to Erosion, but here the center pixel is set to one if at least one of the values in the image is one where
+    the kernel is also one. 
+  \end{definition}
+
+  \begin{itemize}
+    \item You can see erosion as an \textbf{and} between the kernel and the window and dilation as an \textbf{or}.(remember there
+      are don't cares in the kernel)
+    \item This will increase the area of what is considered foreground. Suppose there are holes in the foreground, it
+      will likely close them with enough operations. 
+    \item It will also enhance are of the noise signal. That's why we usually apply it followed by an erosion. This
+      combination is called closing operation. The opposite order is called opening.
+  \end{itemize}
+\end{frame}
+
+
+\begin{frame}
+      \begin{figure}
+        \centering
+        \includegraphics[width = 0.6\textwidth, keepaspectratio]{./dilationSample.png}
+        \caption{Effect of dilation with a 3x3 kernel \footnote{from http://homepages.inf.ed.ac.uk/rbf/HIPR2/dilate.htm}}
+      \end{figure}
+\end{frame}
+\section{Results of the Week}
+\subsection{Filtering Flow by Connectivity}
+
+\begin{frame}
+  \frametitle{\secname : \subsecname}
+  \begin{block}{Motivation}
+    Spurious optical flow differs from true movement flow in connectivity. Noisy flow is likely to occur on isolated
+    points.
+  \end{block}
+
+  \begin{itemize}
+      \item Connectivity is a term that remember us of graph theory and definitely some graph package could be used for
+        this task
+      \item However, there is an image processing trick that will do the job:
+        \begin{itemize}
+            \item Create a grid of zeros with the size of the image and fill with ones where the optical flow has magnitude in a
+              certain range. 
+            \item In case the flow is computed in sparse points, apply a closing operation to connect near points
+            \item Look now for contours and keep only those with value of area in a certain range
+        \end{itemize}
+  \end{itemize}
+\end{frame}
+
+
+\begin{frame}
+  \frametitle{\secname : \subsecname}
+  \begin{itemize}
+        \begin{itemize}
+            \item Finally, keep only flow vectors on positions that lie inside one of the valid contours
+            \item The only problem is that in the processes of closing we might increase the strength of a spurious
+              signal. Setting the thresholds properly should solve this problem.
+            \item \href{run:runFlowFilter.sh}{Run demo on camera}
+        \end{itemize}
+  \end{itemize}
+\end{frame}
+
+\subsection{Detecting Mouse in a Line}
+\begin{frame}
+  \frametitle{\secname: \subsecname}
+  \begin{itemize}
+      \item A few week ago I suggested that neural networks would be able to detect a mouse in a line of pixels by being
+        able to distinguish between its texture and the background texture
+      \item Still, the neural network wasn't able to learn the features; maybe for a bug in implementation, maybe for
+        lack of layers and nodes
+      \item But what if we're able to right down the features we wanted the neural net to learn?
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{\subsecname : details}
+  \begin{itemize}
+      \item Fix a window of length L around one pixel
+      \item If L is not too big, on a plain surface the values within the window should be similar
+      \item On a shiny or noisy surface, the value inside the window will vary a lot
+      \item The variance is a good measure of how much dispersion theres is in a set.
+      \item \href{run:runLineDetect.sh}{Run demo of detection}
+  \end{itemize}
+\end{frame}
+
+\end{document}
+
+

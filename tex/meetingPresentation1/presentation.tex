@@ -1,0 +1,108 @@
+\documentclass{beamer}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage{graphicx}			%para imagens
+\usepackage{epstopdf} 			%resolve problemas eps-pdf
+\usepackage{fancyhdr}			% para o cabeçalho bonito
+\usepackage{caption}				%para legendas
+\usepackage{placeins} 			%controlar o lugar dos floats
+\usepackage{hyperref}
+\usepackage{color}
+
+\usetheme{Dresden}
+\usecolortheme{orchid}
+\setbeamertemplate{navigation symbols}{}
+
+\newcommand{\HRule}{\rule{\linewidth}{0.5mm}}
+
+\title{Summer Research Project \\  Video Based Mouse Seizure Detection}
+\author{Juarez Sampaio}
+\titlegraphic{\leavevmode\smash{\raisebox{5.5cm}{\includegraphics[width=0.2\textwidth]{logo}}}}
+\institute{Rice University}
+\date{\today}
+
+
+\begin{document}
+\begin{frame}
+        \titlepage
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{During the last week:}
+  \begin{itemize}
+     \item machine learning approach to tracking
+     \item environment to allow repeating the same experiment on different components of the image
+     \item tracking problem solved by allowing user to correct tracking
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Machine Learning Approach to Tracking}
+  \begin{block}{Motivation}
+        Previous experiment with template matching tells us that simple similarity measures are not enough to track the
+        mouse. On template matching we swipe the image comparing a block of image with one or more templates. What if
+        instead of this, we had a classifier telling weather there is a mouse in the current block or not?
+  \end{block}
+
+  In order to do this:
+  \begin{itemize}
+      \item We need to collect positive and negative samples. Show program machineLearningExperiment/collectSampels.py.
+      \item train a classifier
+      \item apply it to tracking. Show demo machineLearningExperiment/experiment\_detextion.py.
+    \end{itemize}
+\end{frame}
+
+
+\begin{frame}
+  \frametitle{Machine Learning Approach to Tracking - Details}
+  \begin{itemize}
+      \item 60x60 images are manually cropped from the video
+      \item every 60x60 sample is converted to a 30x30 version by low pass filtering followed by downsample
+      \item this is know as a pyramid down operation
+      \item the 30x30 image is made into a 1x900 vector
+      \item the feature domain thus become 900 dimension
+      \item A few classifiers were tried. The one the produced best result was Random Forest with 60 classifiers of deep
+        10 each.
+    \end{itemize}
+
+\end{frame}
+
+\begin{frame}
+  \frametitle{Machine Learning Approach to Tracking - Results}
+  \begin{itemize}
+      \item Ensemble methods produced accuracy on test data pf 94\%
+      \item even though, when applied to tracking, too many false positives
+      breaks the tracking.
+      \item the method is also really computational expensive and the tracking becomes slow
+      \item classifying an image is actually really cheap. The expensive part is converting image samples to the desired
+        format. For every 60x60 square in the domain we have to pyramid down it and convert it to 1x900 vector.
+      \item multi processing approaches could improve performance
+      \item Maybe more samples are needed since we're on a high dimensional space
+      \item Or maybe, pixel intensity levels are not enough description. When our brain tracks the mouse it uses a lot
+        of previous knowledge. 
+    \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Environment to develop experiments on multiple components}
+  \begin{itemize}
+      \item I develop a interface that will help applying one algorithm do several components at the same time.
+      \item show demo componentsExperiment/histogramEqualizationExperiment.py
+    \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{'Solving' the Tracking Problem}
+  \begin{itemize}
+      \item The conditions of the recordings do not allow us to rely on much. Geometry, color, spectrum, texture \ldots
+        all will eventually change during the video. When such a change occurs, my trackers would get lost forever.
+      \item My current solution is to ask the user to reset the tracking when this occurs
+      \item Although not elegant, I cannot afford spend more time on tracking. It's time to start pay attention to
+        whatever the mouse is doing
+      \item I hope If we're able to show that we can detect seizures based only on video that future students can get
+        better videos to allow easier tracking.
+      \item show demo python/main.py
+    \end{itemize}
+\end{frame}
+\end{document}

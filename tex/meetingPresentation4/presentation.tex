@@ -1,0 +1,143 @@
+\documentclass{beamer}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage{graphicx}			%para imagens
+\usepackage{epstopdf} 			%resolve problemas eps-pdf
+\usepackage{fancyhdr}			% para o cabeçalho bonito
+\usepackage{caption}				%para legendas
+\usepackage{placeins} 			%controlar o lugar dos floats
+\usepackage{color}
+\usepackage{url}
+\renewcommand{\UrlFont}{\tiny}
+\usepackage{relsize}
+\usepackage{hyperref}
+
+\usetheme{Dresden}
+\usecolortheme{orchid}
+\setbeamertemplate{navigation symbols}{}
+
+\newcommand{\HRule}{\rule{\linewidth}{0.5mm}}
+
+\title{Summer Research Project \\  Video Based Mouse Seizure Detection}
+\author{Juarez Sampaio}
+\titlegraphic{\leavevmode\smash{\raisebox{5.5cm}{\includegraphics[width=0.2\textwidth]{logo}}}}
+\institute{Rice University}
+\date{\today}
+
+
+\begin{document}
+\begin{frame}
+        \titlepage
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Content}
+  \begin{itemize}
+     \item A few concepts in image processing and computer vision:
+       \begin{itemize}
+           \item Code Vectorization
+       \end{itemize}
+     \item Results of the week
+       \begin{itemize}
+           \item Collecting Labeled Sequences
+           \item Filtering Flow
+       \end{itemize}
+  \end{itemize}
+\end{frame}
+
+
+\section{Background Concepts}
+\subsection{Code Vectorization}
+
+\begin{frame}
+  \frametitle{\secname : \subsecname}
+  \begin{block}{Motivation}
+    When dealing with matrix data we might be tempted to write for loops after for loops. However, most operation on an
+    element of the matrix are independent of the others. Those independent operations could take place in parallel.
+    Writing parallel code is troublesome due to memory access conflicts. However, your code can run in parallel if you
+    are able to use methods already implemented in parallel. 
+  \end{block}
+
+  \begin{itemize}
+      \item Part of code vectorization is the art of written for loops as matrix and vectors products and dot products.
+      \item Other techniques are useful: you might want to generate all index of a matrix that are going to be modified
+        and then modify them all at once.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{\secname : \subsecname}
+  \begin{itemize}
+      \item In order to learn code vectorization you need to get familiar with the tools provided by the library(in this
+        case, numpy)
+      \item example from my magnitude band pass flow filter
+        \begin{scriptsize}
+\begin{verbatim}
+flowNorm = np.linalg.norm(newP - oldP, axis = 1)
+valid = np.where(np.logical_and(flowNorm >= self.low_th, \
+                        flowNorm <= self.upper_th))
+\end{verbatim}
+        \end{scriptsize}
+      \item  \href{run:runVectorization.sh}{Run demo}
+    \end{itemize}
+
+\end{frame}
+\section{Results of the Week}
+\subsection{Collecting Labeled Sequences}
+
+\begin{frame}[fragile]
+  \frametitle{\secname : \subsecname}
+  \begin{alertblock}{Motivation}
+    On Supervised Machine Learning we need to train the classifier with labeled samples. The samples collected should be
+    independently draw and be representative of the space of possible samples.
+  \end{alertblock}
+
+  \begin{itemize}
+     \item The previous data available had resolution of minutes
+     \item We plan to detect seizure within sequences of seconds(Is there a seizure in this 3(or 5) seconds video)
+     \item We got together with an expert on this experiment and asked him to precisely point the seizures
+  \end{itemize}
+\end{frame}
+
+
+\begin{frame}[fragile]
+  \frametitle{\secname : \subsecname}
+
+  \begin{itemize}
+     \item Because we wanted this made as quickly as possible two programs were written:
+       \begin{itemize}
+           \item One to crop the video around the minute indicated in the currently available data
+           \item One to open the cropped video and with sliders to help select the seizure sequence.
+      \end{itemize}
+      \item For the first program it was important that the videos were names with the initial time and also that the
+        frame rate is constant along the video
+      \item Example of data collected:
+        \begin{itemize}
+        \begin{scriptsize}
+          \item \begin{verbatim} video 2014-07-16_08-55.avi seizure from frame 01075 to frame 01210 \end{verbatim}
+        \end{scriptsize}
+        \end{itemize}
+      \item  \href{run:runCollect.sh}{Run demo}
+  \end{itemize}
+\end{frame}
+
+
+\subsection{Filtering Optical Flow}
+\begin{frame}[fragile]
+  \frametitle{\secname : \subsecname}
+  \begin{alertblock}{Motivation}
+    Previously it was noted that spurious optical flow is often present on the data. However, true movement differs from
+    spurious flow on magnitude and connectivity of the flow.
+  \end{alertblock}
+
+  \begin{itemize}
+     \item A filter was implemented using the first idea: a low pass filter in magnitude will reduce the amount of
+       spurious data.
+     \item Because we wanted to study the performance of the filter being implemented, the problem was first reproduced
+       on another environment.
+     \item  \href{run:runFlowFilter.sh}{Run demo on camera}
+     \item  \href{run:runFlow.sh}{Run demo on main program}
+  \end{itemize}
+\end{frame}
+\end{document}

@@ -1,0 +1,213 @@
+\documentclass{beamer}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage{graphicx}			%para imagens
+\usepackage{epstopdf} 			%resolve problemas eps-pdf
+\usepackage{fancyhdr}			% para o cabeçalho bonito
+\usepackage{caption}				%para legendas
+\usepackage{placeins} 			%controlar o lugar dos floats
+\usepackage{color}
+\usepackage{url}
+\renewcommand{\UrlFont}{\tiny}
+\usepackage{relsize}
+\usepackage{hyperref}
+
+\usetheme{Dresden}
+\usecolortheme{orchid}
+\setbeamertemplate{navigation symbols}{}
+
+\newcommand{\HRule}{\rule{\linewidth}{0.5mm}}
+
+\title{Summer Research Project \\  Video Based Mouse Seizure Detection}
+\author{Juarez Sampaio}
+\titlegraphic{\leavevmode\smash{\raisebox{5.5cm}{\includegraphics[width=0.2\textwidth]{logo}}}}
+\institute{Rice University}
+\date{\today}
+
+
+\begin{document}
+\begin{frame}
+        \titlepage
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Content}
+  \begin{itemize}
+     \item A few concepts in image processing and computer vision:
+       \begin{itemize}
+           \item Dot Product
+           \item Discrete Fourrier Transform
+       \end{itemize}
+  \end{itemize}
+\end{frame}
+
+
+\section{Background Concepts}
+\subsection{Inner Product}
+
+\begin{frame}
+  \frametitle{\secname : \subsecname}
+  \begin{block}{Definition}
+    The inner product is an operation obeying a set of properties that takes as input two vectors from a given space and produce a real number.
+  \end{block}
+
+  \begin{columns}[c]
+    \begin{column}[l]{.5\textwidth}
+      \begin{alertblock}{Application}
+        An important application is to compute similarity between vectors.
+        \begin{equation}
+          A_b = \frac{||A\cdot B||}{||B||}
+        \end{equation}
+      \end{alertblock}
+    \end{column}
+    \begin{column}[l]{.5\textwidth}
+      \begin{figure}
+        \centering
+        \includegraphics[width = 0.6\textwidth, keepaspectratio]{./dotProduct.png}
+        \caption{Dot product can be used to compute the component of A in the direction of B.}
+      \end{figure}
+    \end{column}
+   \end{columns}
+
+\end{frame}
+
+\begin{frame}
+  \frametitle{\secname : \subsecname}
+  A common space is the $\mathbb{R}^d$ and its usual dot product, but more interesting spaces also have inner product and
+  different inner products can be defined for the same space, each one measuring a different kind of similarity. 
+  \begin{itemize}
+    \item space: $\mathbb{R}^d$
+      \begin{equation}
+        \vec{v} \cdot \vec{w} = \sum_{i=1}^{d} v_i w_i
+      \end{equation}
+
+      \item space: continuous real functions on interval (a,b)
+      \begin{equation}
+        <u,v> = \int_a^b u \cdot v
+      \end{equation}
+
+  \end{itemize}
+
+\end{frame}
+
+\begin{frame}
+  \frametitle{\secname : \subsecname}
+  \begin{block}{Application}
+    Inner products are used to write a vector as a linear combination of a set of vectors that expand the space
+  \end{block}
+  \begin{exampleblock}{An example in $\mathbb{R}^2$}
+    The vector v = (1,2) can be written as:
+    \begin{equation}
+      (1,2) = 1 . (1,0) + 2 . (0,1)
+    \end{equation}
+    Where (1,0) and (0,1) are vectors that expand $\mathbb{R}^2$. Note that the scalars can be found as:
+    \begin{equation}
+      (1,2) = [(1,2)\cdot(1,0)] . (1,0) + [(1,2)\cdot(0,1)] . (0,1)
+    \end{equation}
+  \end{exampleblock}
+\end{frame}
+
+\begin{frame}
+  \frametitle{\secname : \subsecname}
+  \begin{itemize}
+    \item In general, let the inner product be written as $<\vec{a},\vec{b}>$ and let the set $\{\vec{v}_1, \ldots
+      \vec{v}_d\}$ be the basis of a space of dimensionality d. A vector $\vec{x}$ can be written as:
+      \begin{equation}
+        \vec{x} = \sum_{i=1}^d <\vec{x},\vec{v}_i> \vec{v}_i
+      \end{equation}
+    \item call the result $<\vec{x},\vec{v}_i> = a_i$. We can represent x by the set of $a_i$'s. That is, we can
+      reconstruct $\vec{x}$ from its components $a_i$'s
+  \end{itemize}
+\end{frame}
+
+
+\subsection{Discrete Fourrier Transform}
+
+\begin{frame}
+  \frametitle{\secname : \subsecname}
+  \begin{block}{Motivation}
+    We want a technique that allows us to study properties of sequences. We're given a sequence and we'll perform a set
+    of operations that will give us coefficients, each informing us some property of the original sequence
+  \end{block}
+  \begin{itemize}
+    \item The sequence is an ordered and numbered set of values such as $\{ \ldots, a_{-1}, a_0, a_1,\ldots\}$
+    \item We're going to write any sequence as a linear combination of some other sequences. 
+    \item The basis of this space of sequences is a set of periodic complex exponentials $e^{jwn}$. 
+    \item In order to write a sequence of length M we need at least M complex exponentials. They are
+      $e^{j \frac{2\pi}{M}kn}, k = 0,1,\ldots,M-1$
+  \end{itemize}
+\end{frame}
+\begin{frame}
+  \frametitle{\secname : \subsecname}
+  \begin{figure}
+    \includegraphics[width=0.8\linewidth]{./sequencesM=12.png}
+    \caption{A few sequences of the form $y_n = exp(j\frac{2\pi}{M}kn)$ for M = 12}
+  \end{figure}
+\end{frame}
+\begin{frame}
+  \frametitle{\secname : \subsecname}
+  \begin{figure}
+    \includegraphics[width=0.8\linewidth]{./fftSample.png}
+    \caption{Example of 501 DFT of length 10 sequence}
+  \end{figure}
+\end{frame}
+
+\begin{frame}
+  \frametitle{\secname : \subsecname}
+  \begin{exampleblock}{Applications}
+    \begin{itemize}
+        \item When transmitting audio, we can compute the DFT components and then transmit it. The receiver then
+          reconstruct the original signal by adding the right amount of components. More quality implies more DFT
+          components. 
+        \item To every operation applied to the original signal, there is an equivalent operation applied to the
+          signal's DFT. In some cases, it is easier and faster to convert the signal to its DFT, apply the operation on
+          the frequency domain and then convert it back to time domain.
+        \item Large convolutions are implemented this way by open cv.
+    \end{itemize}
+  \end{exampleblock}
+\end{frame}
+
+\begin{frame}
+  \frametitle{\secname : \subsecname}
+  \href{run:runFFT_Demo.sh}{Run FFT demo}
+\end{frame}
+
+\section{Week Results}
+\subsection{Line Wise Detector}
+\begin{frame}
+  \frametitle{\secname : \subsecname}
+  \begin{itemize}
+      \item the neural network constructed was not able to learn the data. The accuracy I got on test data of around
+        60\%
+      \item The good news is that accuracy on training data was also very low. The good thing about it is that this
+        suggests there is a bug somewhere, because neural networks should be able to, at least, overtfit the data. 
+  \end{itemize}
+\end{frame}
+
+\subsection{Changing the reference axis to compute optical flow}
+\begin{frame}
+  \frametitle{\secname : \subsecname}
+  \begin{itemize}
+      \item Instead of computing the flow in the box, the flow is now computed in the points inside the box but in the
+        global frame of the image.
+      \item This reduced a lot the noise, but every now and then there is still some optical flow where nothing should
+        be seen.
+      \item Blurring the image only made it worse.
+      \item \href{run:runFlow.sh}{Run demo}
+  \end{itemize}
+\end{frame}
+
+
+\subsection{Working on the labels}
+\begin{frame}
+  \frametitle{\secname : \subsecname}
+  \begin{itemize}
+      \item At some point we'll have to look at the data we have
+      \item I'm writing a program that takes as input a text file containing times of seizure and produces video
+        containing it.
+      \item The problem with this is that the data we have is split into several videos and some search is required.
+  \end{itemize}
+\end{frame}
+
+\end{document}

@@ -1,0 +1,240 @@
+\documentclass{beamer}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage{graphicx}			%para imagens
+\usepackage{epstopdf} 			%resolve problemas eps-pdf
+\usepackage{fancyhdr}			% para o cabeçalho bonito
+\usepackage{caption}				%para legendas
+\usepackage{placeins} 			%controlar o lugar dos floats
+\usepackage{color}
+\usepackage{url}
+\renewcommand{\UrlFont}{\tiny}
+\usepackage{relsize}
+\usepackage{hyperref}
+
+\usetheme{Dresden}
+\usecolortheme{orchid}
+\setbeamertemplate{navigation symbols}{}
+
+\newcommand{\HRule}{\rule{\linewidth}{0.5mm}}
+
+\title{Summer Research Project \\  Video Based Mouse Seizure Detection}
+\author{Juarez Sampaio}
+\titlegraphic{\leavevmode\smash{\raisebox{5.5cm}{\includegraphics[width=0.2\textwidth]{logo}}}}
+\institute{Rice University}
+\date{\today}
+
+
+\begin{document}
+\begin{frame}
+        \titlepage
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Content}
+  \begin{itemize}
+     \item A few concepts in image processing and computer vision:
+       \begin{itemize}
+           \item Convolution
+           \item Image pyramid
+       \end{itemize}
+     \item Using classification to tracking
+     \item line wise machine learning approach to tracking
+     \item Computing optical flow
+  \end{itemize}
+\end{frame}
+
+
+\section{Convolution}
+\subsection{Definition}
+\begin{frame}
+  \frametitle{\secname : \subsecname}
+  \begin{itemize}
+     \item Convolution is technique broadly use in image processing
+     \item It consists of replacing the intensity value of every pixel by the result of an operation that involves a
+       window around that pixel
+      \item The operation is a sort of dot product between a kernel and the window. 
+      \item Corresponding elements of the kernel and then window are multiplied and the added.
+      \item In other words:
+        \begin{equation}
+          I(i,j) = dot(A, I[i-k:i+k, j-l:j+l])), \forall i,j 
+        \end{equation}
+  \end{itemize}
+\end{frame}
+
+\subsection{Example 1}
+\begin{frame}
+  \frametitle{\secname : \subsecname}
+  \begin{figure}
+    \centering
+    \includegraphics[scale=0.4]{./convExample.png}
+    \caption{Example of convolution to blur the image}
+    \label{fig:pyr}
+  \end{figure}
+\end{frame}
+
+\subsection{Example 2}
+\begin{frame}
+  \frametitle{\secname : \subsecname}
+  \begin{figure}
+    \centering
+    \includegraphics[scale=0.6]{./convExample2.png}
+    \caption{Example of convolution to compute derivatives. The upper filter computes x derivative while the bottom one
+    computer y derivative. Both can be combined to find the gradient.}
+    \label{fig:pyr}
+  \end{figure}
+\end{frame}
+\section{Image Pyramid}
+
+\subsection{Introduction}
+\begin{frame}
+  \frametitle{\secname : \subsecname}
+  \begin{itemize}
+      \item In many image processing tasks we want to work with different sizes of the same image. 
+      \item The concept is as follows: the base of the pyramid contains the highest resolution image available and as
+        we go up the pyramid the resolution decreases.
+      \item The literature actually sees this process as an inverted pyramid. Thus, the high
+        resolution image stands at the top and to decrease resolution we actually go down the pyramid.
+    \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{\secname : \subsecname}
+  \begin{figure}
+    \centering
+    \includegraphics[scale=0.6, angle=180]{./Pyramids_Tutorial_Pyramid_Theory.png}
+    \caption{Inverted pyramid. \footnote{source: open cv documentation
+    \url{http://docs.opencv.org/doc/tutorials/imgproc/pyramids/pyramids.html}}}
+    \label{fig:pyr}
+  \end{figure}
+\end{frame}
+
+\subsection{Down sampling}
+\begin{frame}
+  \frametitle{\secname : \subsecname}
+  Down sampling works as follows
+  \begin{itemize}
+        \item first we blur the image by convolving the image with a low pass kernel
+        \item then we remove n-1 out of n rows and columns.
+        \item The size of the blurring window depends on the degree n. Larger n implies larger blurring operation. 
+        \item As in signal processing, the low pass operation is required to avoid alias.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{\secname : \subsecname}
+  \begin{figure}
+    \centering
+    \includegraphics[scale=0.6, rotate=180]{./pyrDown_example.png}
+    \caption{Down the pyramid}
+    \label{fig:pyr_down}
+  \end{figure}
+\end{frame}
+
+\subsection{Up sampling}
+\begin{frame}
+  \frametitle{\secname : \subsecname}
+  Up sampling works as follows
+  \begin{itemize}
+        \item we add n-1 zeros between every element of the image
+        \item we convolve the resulting image with the same low pass kernel
+        \item This results into a interpolation of the original values
+        \item The previous description allowed us to down sample by integer ratios D and up sample by U. Combining these two operations
+          we can obtain any rational U/D. 
+        \item Keep in mind that it is important to up sample first! Down sampling always implies loss of data!
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{\secname : \subsecname}
+  \begin{figure}
+    \centering
+    \includegraphics[scale=0.6, rotate=180]{./pyrUp_example.png}
+    \caption{Up the pyramid}
+    \label{fig:pyr_up}
+  \end{figure}
+\end{frame}
+
+
+\subsection{Demo}
+\begin{frame}
+  \frametitle{\secname : \subsecname}
+  \href{run:runPyramidDemo.sh}{Run pyramid demo}
+\end{frame}
+
+\section{Classification for Tracking}
+\subsection{Generalizing the convolution}
+\begin{frame}
+  \frametitle{\secname : \subsecname}
+  \begin{itemize}
+      \item The convolution replaces the value of a pixel by the result of a dot product between a kernel and a window
+        around the pixel. 
+       \item What if instead of this dot product, the value of the pixel were replaced by the result of a function
+          applied to a window around the pixel?
+       \item This is precisely the idea I applied last week.
+       \item The function used is a classifier of some sort. 
+  \end{itemize}
+\end{frame}
+
+\subsection{Problem}
+\begin{frame}
+  \frametitle{\secname : \subsecname}
+  \begin{itemize}
+       \item The problem with this was that the libraries we're working with are not familiarized with this extension of
+         the convolution concept and provide no easy way of realizing this classification.
+       \item The convolution had to be hand implemented and the process became slow.
+       \item Also, given the dimensionality of the problem, the accuracy rate of 94\% was not enough to allow this
+         approach to reliably track the mouse
+  \end{itemize}
+\end{frame}
+
+\section{Line wise machine learning approach to tracking}
+\subsection{idea}
+\begin{frame}
+  \frametitle{\secname : \subsecname}
+  \begin{itemize}
+      \item The previous approach tried to use machine learning to answer the question 'is there a mouse in this
+        square'?
+      \item Now, we'll use machine learning to answer 'is there a mouse in this line'?
+      \item Another classifier, trained in the same manner, will answer 'is there a mouse in this column'?
+      \item Both classifiers will be solving a way smaller version of the problem. The row classifier will learn a
+        function on space of dimensionality 320 and the column one on a space with d=240.
+      \item As before, we can use image pyramids to reduce those dimensions to half and quarter of the full resolution!
+    \end{itemize}
+\end{frame}
+
+\subsection{Details}
+\begin{frame}
+  \frametitle{\secname : \subsecname}
+  \begin{itemize}
+      \item The function to be learn has to detect something of the sort 'is there a sequence of consecutive pixels of
+        similar intensity?'
+      \item The value of a pixel alone has no meaning, it is its connections that matter. 
+      \item Thus, there is a hidden feature to be learned here. This requires a classifier that is able to learn those
+        hidden states.
+      \item My bet is that neural networks are the proper tool to this task.
+      \item If this approach works, the hidden nodes will learn the hidden properties and the output layer will combine
+        them to produce the classification.
+    \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Collecting samples}
+  \href{run:runCollect.sh}{Run collect demo}
+\end{frame}
+
+\section{Optical Flow experiments}
+\begin{frame}
+  \frametitle{\secname}
+  \begin{itemize}
+      \item Optical flow is computed on the tracking window produced my the current best tracker
+      \item Because we've reduced the problem to a 30x30 window, we can run dense optical flow.
+      \item Currently I am only plotting the highest value of magnitude seen in the flow.
+      \item The idea is that we can detect seizures by looking at the data
+      \item Maybe we could divide this data into time slices of a given length and then compute its frequency
+        components.
+    \end{itemize}
+  \href{run:runCollect.sh}{Run collect demo}
+\end{frame}
+\end{document}
