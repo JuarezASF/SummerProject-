@@ -1,3 +1,9 @@
+""" This program will help narrow down the precision of the data we have. It will show two windows, one with the video
+and one with a selection of the video that plays over and over. Use the trackbars on the settings window to find the
+precise selection around the seizure moment. Press 'g'(if I am not mistaken) to ge the data. Remember to set which mouse
+is having the seizure."""
+
+
 import sys
 sys.path.insert(0, '../')
 import numpy as np

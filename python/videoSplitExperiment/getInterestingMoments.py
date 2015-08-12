@@ -1,3 +1,6 @@
+"""This program will read input file and try to locate in the videos we're given the minute around around a seizure.
+The objective is to help in the process of narrowing down the precision of the available data."""
+
 import pathlib
 import cv2
 from operator import itemgetter

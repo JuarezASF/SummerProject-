@@ -90,9 +90,9 @@ class cv:
 
     @staticmethod
     def getVideoCaptureFrameHeightWidth(cap):
-        w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
         h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-        return w,h
+        w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+        return h,w
 
     @staticmethod
     def waitKey(time):
