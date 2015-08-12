@@ -18,6 +18,7 @@ from flowUtil import FlowComputer
 import flowUtil
 
 #videos will be read from this path
+control_Path2VideoFiles = '../videoCleanExperiment/output/fallingMouse/'
 control_Path2VideoFiles = '../../video/mp4/'
 control_settings = {'control_mode':'run'}
 
@@ -47,7 +48,7 @@ def onVideoChange(index):
 jasf_cv.setTrackbar('video file', 0, len(videoFiles)-1, onCallBack = onVideoChange, window_name='settings')
 jasf.cv.setManyTrackbars(['th', 'max', 'delta', 'dilateSize', 'erodeSize', 'LRA'], [0, 100, 4, 5, 0, 1], [400, 400, 10, 21, 21, 2])
 jasf.cv.setManyTrackbars(['flow_lowTh', 'flow_upTh', 'flowConect_lowTh', 'flowConect_upTh'], [2, 30, 160, 10000], [50, 50, 1000, 10000])
-jasf.cv.setManyTrackbars(['connectivityFilterOn', 'magnitudeFilterOn'], [0, 0], [1,1], i=1)
+jasf.cv.setManyTrackbars(['connectivityFilterOn', 'magnitudeFilterOn', 'class1', 'class2', 'class3'], [0, 0, 95, 85, 75], [1,1,100,100,100], i=1)
 
 #####################################
 #Auxiliar Classes
@@ -87,6 +88,9 @@ def readControlSetting(name):
 def readSettings():
     """ read general settings """
     return jasf.cv.readManyTrackbars(['th', 'max', 'delta', 'dilateSize', 'erodeSize', 'LRA'])
+
+def readClassSettings():
+    return jasf.cv.readManyTrackbars(['class1', 'class2', 'class3'], i=1)
 
 def readFlowSettings():
     """ read flow settings """
@@ -321,10 +325,15 @@ while cam.isOpened():
     #Step 5.2.2 find 5% magnitude vectors
     #-----------------------------------------------------------------
     #sort flow endpoints according to its norm and get the last 5%(with highest magnitutes) 
+    class1Th, class2Th, class3Th = readClassSettings()
+    class1Th, class2Th, class3Th = class1Th/100.0, class2Th/100.0, class3Th/100.0
     sortingIndexes = flowNorm.argsort()
-    selectedIndexes = sortingIndexes[int(0.95*sortingIndexes.size):]
-    newP_5percent = newP[selectedIndexes]
-    oldP_5percent = oldP[selectedIndexes]
+    selectedIndexes_class1 = sortingIndexes[int(class1Th*sortingIndexes.size):]
+    selectedIndexes_class2 = sortingIndexes[int(class2Th*sortingIndexes.size):int(class1Th*sortingIndexes.size)]
+    selectedIndexes_class3 = sortingIndexes[int(class3Th*sortingIndexes.size):int(class2Th*sortingIndexes.size)]
+    newP_class1, oldP_class1 = newP[selectedIndexes_class1], oldP[selectedIndexes_class1]
+    newP_class2, oldP_class2 = newP[selectedIndexes_class2], oldP[selectedIndexes_class2]
+    newP_class3, oldP_class3 = newP[selectedIndexes_class3], oldP[selectedIndexes_class3]
     #-----------------------------------------------------------------
     #Step 5.3 Draw flow and plot the highest magnitude vector
     #-----------------------------------------------------------------
@@ -336,7 +345,10 @@ while cam.isOpened():
     #if there is a highest magnitude to paint, paint it red
     if maxFlow_i != -1:
         #first paint top 5 percent magnitude vectors as green and then the highest one as RED
-        mouseImg = flowUtil.draw_flow(mouseImg, oldP_5percent, newP_5percent, (0,255,0), 1, 1, 2, th = 2.0)
+        mouseImg = flowUtil.draw_flow(mouseImg, oldP_class1, newP_class1, (0,255,0), 1, 1, 2, th = 2.0)
+        mouseImg = flowUtil.draw_flow(mouseImg, oldP_class2, newP_class2, (100,100,0), 1, 1, 2, th = 2.0)
+        mouseImg = flowUtil.draw_flow(mouseImg, oldP_class3, newP_class3, (0,100,100), 1, 1, 2, th = 2.0)
+        #draw max flow
         mouseImg = flowUtil.draw_flow(mouseImg, np.array([oldP[maxFlow_i]]), np.array([newP[maxFlow_i]]), (0,0,255), 1, 1, 2, th = 2.0)
     if iteration % 10 == 0 and control_show_plot:
         #we only plot every 10 iterations so we don't slow down the program too much. Also, we reduce by 10 the number
