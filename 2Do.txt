@@ -1,0 +1,7 @@
+* produce output as mp4 videos
+* improvement of the flow computation:
+    **compute flow between average on two adjacent windows
+    **average top 5% flows on a regular flow computation
+* plot magnitude and angle as a function of time 
+* look at the orientation of the minimum bounding rectangle
+

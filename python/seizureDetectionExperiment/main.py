@@ -18,8 +18,8 @@ from flowUtil import FlowComputer
 import flowUtil
 
 #videos will be read from this path
-control_Path2VideoFiles = '../videoCleanExperiment/output/fallingMouse/'
 control_Path2VideoFiles = '../../video/mp4/'
+control_Path2VideoFiles = '../videoCleanExperiment/output/fallingMouse/'
 control_settings = {'control_mode':'run'}
 
 videoFiles = list(p for p in pathlib.Path(control_Path2VideoFiles).iterdir() if p.is_file() and p.name[0] != '.')
@@ -346,8 +346,8 @@ while cam.isOpened():
     if maxFlow_i != -1:
         #first paint top 5 percent magnitude vectors as green and then the highest one as RED
         mouseImg = flowUtil.draw_flow(mouseImg, oldP_class1, newP_class1, (0,255,0), 1, 1, 2, th = 2.0)
-        mouseImg = flowUtil.draw_flow(mouseImg, oldP_class2, newP_class2, (100,100,0), 1, 1, 2, th = 2.0)
-        mouseImg = flowUtil.draw_flow(mouseImg, oldP_class3, newP_class3, (0,100,100), 1, 1, 2, th = 2.0)
+        mouseImg = flowUtil.draw_flow(mouseImg, oldP_class2, newP_class2, (0,20,60), 1, 1, 2, th = 2.0)
+        mouseImg = flowUtil.draw_flow(mouseImg, oldP_class3, newP_class3, (0,60,20), 1, 1, 2, th = 2.0)
         #draw max flow
         mouseImg = flowUtil.draw_flow(mouseImg, np.array([oldP[maxFlow_i]]), np.array([newP[maxFlow_i]]), (0,0,255), 1, 1, 2, th = 2.0)
     if iteration % 10 == 0 and control_show_plot:
