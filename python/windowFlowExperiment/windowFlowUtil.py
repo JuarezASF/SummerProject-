@@ -89,7 +89,7 @@ if __name__ == "__main__":
     h,w = jasf.cv.getVideoCaptureFrameHeightWidth(cam)
     unit.setGrid(flowUtil.getGrid(w/2,h/2, 100, 100, 10, 10))
 
-    jasf.cv.getManyWindows(['output', 'average1', 'average2'])
+    jasf.cv.getManyWindows(['input', 'output', 'average1', 'average2'])
 
     ret,frame = cam.read()
     output = np.zeros_like(frame)
@@ -106,6 +106,7 @@ if __name__ == "__main__":
             output = flowUtil.draw_flow(frame, old, new)
 
 
+        cv2.imshow('input', frame)
         cv2.imshow('output', output)
 
 
