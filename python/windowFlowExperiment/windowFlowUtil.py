@@ -12,28 +12,42 @@ import pdb
 
 class WindowFlowComputer(flowUtil.FlowComputer):
     def __init__(self, ws=3):
-        self.possible_states = ('waitingInitializing', 'running')
-        self.state = self.possible_states[0]
-        self.buffer_first, self.buffer_second = list(), list()
         self.windowSize = ws
         self.lk_params = dict(  winSize  = (15,15),\
                                 maxLevel = 2,\
                                 criteria = (cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 10, 0.1))
 
-    def clearBuffers(self):
-        self.buffer_first, self.buffer_second = [], []
+        self.average1 = np.empty((0,0), dtype = np.uint8)
+        self.average2 = np.empty((0,0), dtype = np.uint8)
+        self.added2average1 = 0
+        self.added2average2 = 0
+
+    def clearAverages(self):
+        self.average1 = np.empty((0,0), dtype = np.uint8)
+        self.average2 = np.empty((0,0), dtype = np.uint8)
 
     def setWindowSize(self, ws):
         self.setWindowSize = ws
 
     def isReady(self):
-        return (len(self.buffer_first) == self.windowSize) and (len(self.buffer_second) == self.windowSize)
+        return (self.added2average1 == self.windowSize) and (self.added2average2 == self.windowSize)
 
-    def addToBuffer(self, img):
-        if len(self.buffer_first) < 3:
-            self.buffer_first.append(img)
+    def addToAverage(self, img):
+        if self.added2average1 < self.windowSize:
+            if self.added2average1 == 0:
+                self.average1 = img * 1.0/self.windowSize
+            else:
+                self.average1 += img * 1.0/self.windowSize
+
+            self.added2average1 += 1
+
         else:
-            self.buffer_second.append(img)
+            if self.added2average2 == 0:
+                self.average2 = img * 1.0/self.windowSize
+            else:
+                self.average2 += img * 1.0/self.windowSize
+
+            self.added2average2 += 1
 
     def apply(self, img):
         """If object is not ready to compute because the new window was not received yet, then we return two empty
@@ -41,15 +55,16 @@ class WindowFlowComputer(flowUtil.FlowComputer):
         if self.isReady():
             #take average of buffers then compute flow between then
             #average buffers
-            average1 = jasf.cv.averageImages(self.buffer_first)
-            average2 = jasf.cv.averageImages(self.buffer_second)
+            average1 = np.array(self.average1, dtype = np.uint8)
+            average2 = np.array(self.average2, dtype = np.uint8)
 
             # calculate optical flow
             p1, st, err = cv2.calcOpticalFlowPyrLK(average1, average2, self.grid, None, **self.lk_params)
 
             #move new window(second buffer) to old windos(first buffer)
-            self.buffer_first = self.buffer_second
-            self.buffer_second = []
+            self.average1 = self.average2
+            self.added2average2 = 0
+            self.average2 = np.empty_like((0,0), dtype = np.uint8)
 
             # Select good points. That is, points for which the flow was successdully computed
             goodIndex = np.where(st == 1)[0]
@@ -62,7 +77,7 @@ class WindowFlowComputer(flowUtil.FlowComputer):
             return good_old, good_new
 
         else:
-            self.addToBuffer(img)
+            self.addToAverage(img)
             return np.empty((0,0), dtype = np.uint8), np.empty((0,0), dtype = np.uint8)
 
 if __name__ == "__main__":
