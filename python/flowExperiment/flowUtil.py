@@ -44,7 +44,8 @@ def getGrid(x,y,w,h,x_step=1, y_step=1):
     X,Y = np.mgrid[x:x+w:x_step, y:y+h:y_step]
     return np.array(np.vstack((X.flatten(),Y.flatten())).transpose(), dtype=np.float32) 
 
-def draw_flow(img, pts, next_pts, flowColor = (0,0,255), flowThickness = 1, p=1, q=1, th = 0):
+def draw_flow(img, pts, next_pts, flowColor = (0,0,255), flowThickness = 1, p=1, q=1, th = 0, drawArrows=False,
+        lenghtOfArrayArm = 2, angleOfArrow=np.pi/3):
     """ Draw p every q flow points. Flow is draw only if its magnitude is higher than th"""
     if pts.shape[0] == 0 or next_pts.shape[0] == 0 or pts.shape[0] != next_pts.shape[0]:
         return img
@@ -73,6 +74,34 @@ def draw_flow(img, pts, next_pts, flowColor = (0,0,255), flowThickness = 1, p=1,
         img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
     #draw multiple lines
     cv2.polylines(img, lines, isClosed = False, color = flowColor, thickness=flowThickness)
+
+    if drawArrows:
+        #compute flow direction
+        flow = lines[:, 1, :] - lines[:,0,:]
+        flow_tan = flow[:,1]*1.0/flow[:,0]
+        flow_angle = np.arctan(flow_tan)
+
+        #get start point of every arrow
+        startPoints_x = lines[:, 1, 0]
+        startPoints_y = lines[:, 1, 1]
+
+        #get end point of arrow arm 1
+        endPoints_x = startPoints_x + lenghtOfArrayArm * np.cos( angleOfArrow + np.pi + flow_angle)
+        endPoints_y = startPoints_y + lenghtOfArrayArm * np.sin( angleOfArrow + np.pi + flow_angle)
+
+        #get end point of arrow arm 2
+        endPoints2_x = startPoints_x + lenghtOfArrayArm * np.cos( -1.0*angleOfArrow + np.pi + flow_angle)
+        endPoints2_y = startPoints_y + lenghtOfArrayArm * np.sin( -1.0*angleOfArrow + np.pi + flow_angle)
+
+        #create array with line indications the way opencv wants it
+        arrowArms = np.hstack(startPoints_x, startPoints_y, endPoints_x, endPoints_y)
+        arrowArms2 = np.hstack(startPoints_x, startPoints_y, endPoints2_x, endPoints2_y)
+        arrowArms = np.vstack((arrowArms, arrowArms2))
+        arrowArms =  arrowArms.reshape((-1,2,2))
+
+        #draw multiple lines
+        cv2.polylines(img, arrowArms, isClosed = False, color = flowColor, thickness=flowThickness)
+
 
     return img
 
