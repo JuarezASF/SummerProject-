@@ -1,8 +1,12 @@
+""" This file implements the WindowFlowComputer. There are two adjacent windows that slide through the flow of video.
+The windows are averaged and we compute the flow between the two averages. The window then move window_length frames to
+the right. That is, if at a given moment window 1 corresponds to frames 1,2,3 and window 2 corresponds to frames 4,5,6
+then when the window move: window1 contains 4,5,6 and window 2 contains 7,8,9 for a window lenght of 3.
+"""
 import sys
 sys.path.insert(0, '../')
 import jasf
 from jasf import jasf_cv
-sys.path.append('../flowExperiment/')
 import flowUtil
 
 import numpy as np
