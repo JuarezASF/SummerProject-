@@ -172,6 +172,17 @@ class cv:
         roi = img[y0:y1, x0:x1]
         return roi.copy()
 
+    @staticmethod
+    def averageImages(imgList):
+        """ receive a list of opencv images(numpy arrays) of the same size and sum them all with equal weight equal to
+        1.0/len(imgList). The dtype is set to np.uint8. The list is assumed to have lenght greater or equal to than 2."""
+        alpha = 1.0/len(imgList)
+        average = cv2.addWeighted(imgList[0], alpha, imgList[1], alpha, 0)
+        for i in range(3, len(imgList)):
+            average = cv2.addWeighted(average, 1.0, imgList[i], alpha, 0)
+        return average
+
+
 class jasf_cv:
     def __init__(self):
         pass
