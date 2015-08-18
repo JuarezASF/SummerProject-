@@ -75,29 +75,32 @@ def draw_flow(img, pts, next_pts, flowColor = (0,0,255), flowThickness = 1, p=1,
     #draw multiple lines
     cv2.polylines(img, lines, isClosed = False, color = flowColor, thickness=flowThickness)
 
+    import pdb
     if drawArrows:
         #compute flow direction
         flow = lines[:, 1, :] - lines[:,0,:]
-        flow_tan = flow[:,1]*1.0/flow[:,0]
-        flow_angle = np.arctan(flow_tan)
+        flow_angle = np.arctan2(flow[:,1], flow[:,0]).reshape(-1,1)
 
         #get start point of every arrow
-        startPoints_x = lines[:, 1, 0]
-        startPoints_y = lines[:, 1, 1]
+        startPoints_x = lines[:, 1, 0].reshape(-1,1)
+        startPoints_y = lines[:, 1, 1].reshape(-1,1)
 
         #get end point of arrow arm 1
-        endPoints_x = startPoints_x + lenghtOfArrayArm * np.cos( angleOfArrow + np.pi + flow_angle)
-        endPoints_y = startPoints_y + lenghtOfArrayArm * np.sin( angleOfArrow + np.pi + flow_angle)
+        endPoints_x = (startPoints_x + lenghtOfArrayArm * np.cos( angleOfArrow + np.pi + flow_angle)).reshape(-1,1)
+        endPoints_y = (startPoints_y + lenghtOfArrayArm * np.sin( angleOfArrow + np.pi + flow_angle)).reshape(-1,1)
 
         #get end point of arrow arm 2
-        endPoints2_x = startPoints_x + lenghtOfArrayArm * np.cos( -1.0*angleOfArrow + np.pi + flow_angle)
-        endPoints2_y = startPoints_y + lenghtOfArrayArm * np.sin( -1.0*angleOfArrow + np.pi + flow_angle)
+        endPoints2_x = (startPoints_x + lenghtOfArrayArm * np.cos( -1.0*angleOfArrow + np.pi + flow_angle)).reshape(-1,1)
+        endPoints2_y = (startPoints_y + lenghtOfArrayArm * np.sin( -1.0*angleOfArrow + np.pi + flow_angle)).reshape(-1,1)
+
 
         #create array with line indications the way opencv wants it
-        arrowArms = np.hstack(startPoints_x, startPoints_y, endPoints_x, endPoints_y)
-        arrowArms2 = np.hstack(startPoints_x, startPoints_y, endPoints2_x, endPoints2_y)
+        arrowArms  = np.hstack((startPoints_x, startPoints_y, endPoints_x,  endPoints_y))
+        arrowArms2 = np.hstack((startPoints_x, startPoints_y, endPoints2_x, endPoints2_y))
         arrowArms = np.vstack((arrowArms, arrowArms2))
         arrowArms =  arrowArms.reshape((-1,2,2))
+        arrowArms = np.array(arrowArms, dtype = np.int32)
+
 
         #draw multiple lines
         cv2.polylines(img, arrowArms, isClosed = False, color = flowColor, thickness=flowThickness)

@@ -63,8 +63,9 @@ if __name__ == "__main__":
         old, new = unit.apply(frame)
         if old.size != 0:
             averageOld, averageNew = averageFlow(old, new)
-            output = flowUtil.draw_flow(frame, old, new)
-            output = flowUtil.draw_flow(output, averageOld,averageNew, flowColor = jasf.cv.green, flowThickness=3)
+            output = flowUtil.draw_flow(frame, old, new, drawArrows = True, lenghtOfArrayArm = 3)
+            output = flowUtil.draw_flow(output, averageOld,averageNew, flowColor = jasf.cv.green, flowThickness=2,
+                    drawArrows = True, lenghtOfArrayArm = 5)
 
 
         cv2.imshow('input', frame)
