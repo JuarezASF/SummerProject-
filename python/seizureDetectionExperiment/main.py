@@ -191,10 +191,11 @@ contourPicker = PreviousCenter_MousePicker()
 flowComputerAvailableOptions = ('regular', 'rangePercent_regular', 'rangePercent_windowFlow', 'windowFlow')
 flowComputerOption = 'regular' if 'flowComputer' not in control_inputDict.keys() else control_inputDict['flowComputer']
 flowComputer =                (   FlowComputer() if flowComputerOption == 'regular' else 
-                                 RangePerCentFlowComputer_regularComputer() if flowComputerOption == 'rangePercent_regular' else  
-                                 RangePerCentFlowComputer_windowFlow() if flowComputerOption == 'rangePercent_windowFlow' else 
+                                 rangePercentFlowComputer.RangePerCentFlowComputer_regularComputer() if flowComputerOption == 'rangePercent_regular' else  
+                                 rangePercentFlowComputer.RangePerCentFlowComputer_windowFlow() if flowComputerOption == 'rangePercent_windowFlow' else 
                                  windowFlowUtil.WindowFlowComputer() if flowComputerOption == 'windowFlow' else FlowComputer() )
                             
+print 'using the following class for flow computation', flowComputer.__class__
 
 flowFilter_magnitude = flowUtil.FlowFilter()
 flowFilter_conectivity = flowUtil.FlowFilter_ConnectedRegions()
@@ -339,15 +340,8 @@ while cam.isOpened():
     #Step 5.2.2 find 5% magnitude vectors
     #-----------------------------------------------------------------
     #sort flow endpoints according to its norm and get the last 5%(with highest magnitutes) 
-    class1Th, class2Th, class3Th = readClassSettings()
-    class1Th, class2Th, class3Th = class1Th/100.0, class2Th/100.0, class3Th/100.0
-    sortingIndexes = flowNorm.argsort()
-    selectedIndexes_class1 = sortingIndexes[int(class1Th*sortingIndexes.size):]
-    selectedIndexes_class2 = sortingIndexes[int(class2Th*sortingIndexes.size):int(class1Th*sortingIndexes.size)]
-    selectedIndexes_class3 = sortingIndexes[int(class3Th*sortingIndexes.size):int(class2Th*sortingIndexes.size)]
-    newP_class1, oldP_class1 = newP[selectedIndexes_class1], oldP[selectedIndexes_class1]
-    newP_class2, oldP_class2 = newP[selectedIndexes_class2], oldP[selectedIndexes_class2]
-    newP_class3, oldP_class3 = newP[selectedIndexes_class3], oldP[selectedIndexes_class3]
+    #class1Th, class2Th, class3Th = readClassSettings()
+    #class1Th, class2Th, class3Th = class1Th/100.0, class2Th/100.0, class3Th/100.0
     #-----------------------------------------------------------------
     #Step 5.3 Draw flow and plot the highest magnitude vector
     #-----------------------------------------------------------------
@@ -355,15 +349,13 @@ while cam.isOpened():
     #the five percent highest magnitude vectors are painted as Green(0,255,0)
     #-----------------------------------------------------------------
     #draw every valid flow vector as blue
-    mouseImg = flowUtil.draw_flow(flowInput, oldP, newP, (255,0,0), 1, 1, 2, th = 0.2)
+    mouseImg = flowUtil.draw_flow(flowInput, oldP, newP, (255,0,0), 1, p=1, q=2, th=0.2, drawArrows=True)
     #if there is a highest magnitude to paint, paint it red
     if maxFlow_i != -1:
-        #first paint top 5 percent magnitude vectors as green and then the highest one as RED
-        mouseImg = flowUtil.draw_flow(mouseImg, oldP_class1, newP_class1, (0,255,0), 1, 1, 2, th = 2.0)
-        mouseImg = flowUtil.draw_flow(mouseImg, oldP_class2, newP_class2, (0,20,60), 1, 1, 2, th = 2.0)
-        mouseImg = flowUtil.draw_flow(mouseImg, oldP_class3, newP_class3, (0,60,20), 1, 1, 2, th = 2.0)
+        #first paint top X percent magnitude vectors as green and then the highest one as RED
         #draw max flow
-        mouseImg = flowUtil.draw_flow(mouseImg, np.array([oldP[maxFlow_i]]), np.array([newP[maxFlow_i]]), (0,0,255), 1, 1, 2, th = 2.0)
+        mouseImg = flowUtil.draw_flow(mouseImg, np.array([oldP[maxFlow_i]]), np.array([newP[maxFlow_i]]), (0,0,255), 1,
+                1, 2, th = 2.0, drawArrows=True)
     if iteration % 10 == 0 and control_show_plot:
         #we only plot every 10 iterations so we don't slow down the program too much. Also, we reduce by 10 the number
         #of points being ploted.
