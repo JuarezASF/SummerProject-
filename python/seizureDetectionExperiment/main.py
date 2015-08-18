@@ -16,11 +16,15 @@ import copy
 sys.path.append('../flowExperiment')
 from flowUtil import FlowComputer
 import flowUtil
+import rangePercentFlowComputer
+import windowFlowUtil
+from inputParse import parseInput
 
 #videos will be read from this path
-control_Path2VideoFiles = '../../video/mp4/'
 control_Path2VideoFiles = '../videoCleanExperiment/output/fallingMouse/'
+control_Path2VideoFiles = '../../video/mp4/'
 control_settings = {'control_mode':'run'}
+control_inputDict = parseInput(sys.argv)
 
 videoFiles = list(p for p in pathlib.Path(control_Path2VideoFiles).iterdir() if p.is_file() and p.name[0] != '.')
 videoFiles.sort(key = lambda x: x.name)
@@ -69,7 +73,8 @@ class MouseDescription:
 #Control Variables
 #####################################
 control_mouse = MouseDescription()
-control_show_plot = True
+control_show_plot = False
+control_show_fft_fft = False
 control_array = {}
 control_array['fps'] = int(cam.get(cv2.CAP_PROP_FPS) + 0.5)
 control_array['frames2FFT'] = 3*control_array['fps']
@@ -181,7 +186,16 @@ def askUserForInput(frame):
 ret,frame = cam.read()
 contourFinder = DevikasFilterGroundSubtraction_ContourFinder()
 contourPicker = PreviousCenter_MousePicker()
-flowComputer = FlowComputer()
+
+#decide which flow computer to use
+flowComputerAvailableOptions = ('regular', 'rangePercent_regular', 'rangePercent_windowFlow', 'windowFlow')
+flowComputerOption = 'regular' if 'flowComputer' not in control_inputDict.keys() else control_inputDict['flowComputer']
+flowComputer =                (   FlowComputer() if flowComputerOption == 'regular' else 
+                                 RangePerCentFlowComputer_regularComputer() if flowComputerOption == 'rangePercent_regular' else  
+                                 RangePerCentFlowComputer_windowFlow() if flowComputerOption == 'rangePercent_windowFlow' else 
+                                 windowFlowUtil.WindowFlowComputer() if flowComputerOption == 'windowFlow' else FlowComputer() )
+                            
+
 flowFilter_magnitude = flowUtil.FlowFilter()
 flowFilter_conectivity = flowUtil.FlowFilter_ConnectedRegions()
 
@@ -369,7 +383,7 @@ while cam.isOpened():
     #-----------------------------------------------------------------
     #the fft is computed with data from every iteration, while the plot shows only data every 10 iterations
     data2FFT.append(maxFlowNorm)
-    if len(data2FFT) == control_array['frames2FFT']:
+    if control_show_fft_fft and len(data2FFT) == control_array['frames2FFT']:
         #this is the size of the computed fft
         fft_N = 100
         #we need to shift to make sure the zero frequency is centered

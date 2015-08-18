@@ -6,19 +6,23 @@ import flowUtil
 import cv2
 import numpy as np
 import pdb
+import windowFlowUtil
 
-class RangePerCentFlowComputer(flowUtil.FlowComputer):
-    def __init__(self, min=0.95, max=1.0):
-        super(RangePerCentFlowComputer, self).__init__()
+class RangePerCentFlowComputer(object):
+    def __init__(self, computer = flowUtil.FlowComputer(), min=0.95, max=1.0):
+        self.flowComputer = computer
         self.setPercentageInterval(min, max)
 
     def setPercentageInterval(self, min, max):
         self.minP = min
         self.maxP = max
 
+    def setGrid(self, grid):
+        self.flowComputer.setGrid(grid)
+
     def apply(self, img):
         #grap regular flow
-        prev, new = super(RangePerCentFlowComputer, self).apply(img)
+        prev, new = self.flowComputer.apply(img)
         #compute flow magnitudes as norm of the difference
         flow = new - prev
         flowNorm = np.linalg.norm(flow, axis = 1)
@@ -30,6 +34,14 @@ class RangePerCentFlowComputer(flowUtil.FlowComputer):
 
         return oldP_selected, newP_selected
 
+class RangePerCentFlowComputer_regularComputer(RangePerCentFlowComputer):
+    def __init__(self, min=0.95, max=1.0):
+        super(RangePerCentFlowComputer_regularComputer, self).__init__(flowUtil.FlowComputer(), min, max)
+        
+class RangePerCentFlowComputer_windowFlow(RangePerCentFlowComputer):
+    def __init__(self, min=0.95, max=1.0):
+        super(RangePerCentFlowComputer_windowFlow, self).__init__(windowFlowUtil.WindowFlowComputer(), min, max)
+
 def averageFlow(prev, new):
     #average origin of flow:
     averageOrigin = np.average(prev.reshape(-1, 1, 2), axis = 0)
@@ -40,18 +52,32 @@ def averageFlow(prev, new):
 
 
 if __name__ == "__main__":
+    def help():
+        print 'usage: python RangePerCentFlowComputer option'
+        print 'option maybe "regular" or "window"'
+        quit()
     print 'running test mode of RangePerCentFlowComputer...'
     cam = cv2.VideoCapture(0)
 
-    unit = RangePerCentFlowComputer()
+    if len(sys.argv) != 2 or sys.argv[1] not in ('regular', 'window'):
+        help()
+
+    mode = sys.argv[1]
+    unit = RangePerCentFlowComputer_regularComputer() if mode == 'regular' else RangePerCentFlowComputer_windowFlow()
 
     h,w = jasf.cv.getVideoCaptureFrameHeightWidth(cam)
     unit.setGrid(flowUtil.getGrid(0,0, w, h, 10, 10))
 
-    jasf.cv.getManyWindows(['input', 'output']) 
+    jasf_cv.getBasicWindows()
 
     ret,frame = cam.read()
     output = np.zeros_like(frame)
+
+    jasf.cv.setManyTrackbars(['min', 'max'], [95, 100], [100,100])
+
+    def readSettings():
+        min,max = jasf.cv.readManyTrackbars(['min', 'max'])
+        return min/100.0, max/100.0
 
     while True:
         ch = cv2.waitKey(30) & 0xFFFF
@@ -59,6 +85,9 @@ if __name__ == "__main__":
             break
         ret, frame = cam.read()
         frame = jasf_cv.convertBGR2Gray(frame)
+
+        min,max = readSettings()
+        unit.setPercentageInterval(min, max)
 
         old, new = unit.apply(frame)
         if old.size != 0:

@@ -75,8 +75,8 @@ class WindowFlowComputer(flowUtil.FlowComputer):
             good_new = p1[goodIndex]
             good_old = self.grid[goodIndex]
 
-            cv2.imshow('average1', average1)
-            cv2.imshow('average2', average2)
+            # debug cv2.imshow('average1', average1)
+            # debug cv2.imshow('average2', average2)
 
             return good_old, good_new
 
@@ -116,5 +116,3 @@ if __name__ == "__main__":
 
     cv2.destroyAllWindows()
     cam.release()
-
-
