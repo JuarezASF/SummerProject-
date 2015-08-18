@@ -33,7 +33,7 @@ cam = cv2.VideoCapture(videoFiles[0].absolute().as_posix())
 
 jasf_cv.getNewWindow('settings')
 jasf_cv.getNewWindow('settings1')
-jasf.cv.getManyWindows(['input', 'B', 'otsuTh', 'clean+filter', 'output', 'mouseImg'], n = (5,5))
+jasf.cv.getManyWindows(['B', 'otsuTh', 'clean+filter', 'tracking', 'flowImg'], n = (5,5))
 #####################################
 #set trackbars
 #####################################
@@ -73,7 +73,7 @@ class MouseDescription:
 #Control Variables
 #####################################
 control_mouse = MouseDescription()
-control_show_plot = False
+control_show_plot = True
 control_show_fft_fft = False
 control_array = {}
 control_array['fps'] = int(cam.get(cv2.CAP_PROP_FPS) + 0.5)
@@ -179,6 +179,12 @@ def askUserForInput(frame):
     #compute area and set the new thresholds
     updateValuesOfTh(delta)
     
+def plotData(ax, x,y):
+    #clear the current axis
+    ax.cla()
+    #plot
+    ax.plot(x, y, marker='o', linestyle='--')
+    #ax.tick_params(axis='both', which='both', bottom='off', top='off', labelbottom='off')
 #########################################
 #Useful objects
 #########################################
@@ -201,21 +207,14 @@ flowFilter_magnitude = flowUtil.FlowFilter()
 flowFilter_conectivity = flowUtil.FlowFilter_ConnectedRegions()
 
 #########################################
-#Initialize plot for data
+#Initialize plot for data init plot data 
 #########################################
 import matplotlib.pyplot as plt
-plot, ax = plt.subplots()
-plot_x = []
-plot_y = []
-points, = ax.plot(plot_x, plot_y, marker='o', linestyle='--')
+plot, axis = plt.subplots(2,3)
+xData = [[list() for j in range(axis.shape[1])] for i in range(axis.shape[0])]
+yData = [[list() for j in range(axis.shape[1])] for i in range(axis.shape[0])]
+#used to keep track of iterations
 iteration = 0
-#########################################
-#Initialize Fourrier Plot
-#########################################
-fft_plot, fft_ax = plt.subplots()
-fft_plot_x = []
-fft_plot_y = []
-fft_points, = fft_ax.plot(fft_plot_x, fft_plot_y, marker='o', linestyle='--')
 #initializate video and ask user for input
 onVideoChange(0)
 #########################################
@@ -247,7 +246,7 @@ while cam.isOpened():
     #-----------------------------------------------------------------
     #Step 1: prepare input for algorith
     #-----------------------------------------------------------------
-    #this is, pick the right half, component and embed it into higher black image
+    #this is, pick the right half component and embed it into higher black image
     #-----------------------------------------------------------------
     th, th_max, delta, dilateSize, erodeSize, LRA = readSettings()
     #select which image to use
@@ -256,7 +255,7 @@ while cam.isOpened():
     input = inputList[LRA]
     #embed input image into a bigger black image
     h,w,d = input.shape
-    ho, wo = 40,40 # 'o' for ofset
+    ho, wo = 40,40 # 'o' for ofset; those are the dimension of the margin
     extendedInput = np.zeros((h+2*ho,w+2*wo,d), dtype=np.uint8)
     extendedInput[ho:ho+h, wo:wo+w, :] = input[:,:,:]
 
@@ -275,23 +274,23 @@ while cam.isOpened():
     #Step 3: select which contour is the real mouse
     #-----------------------------------------------------------------
     rx,ry,new_mouse = contourPicker.pickCorrectContour(contours, {'last_center':(control_mouse.rx, control_mouse.ry), 'distanceRejectTh':2000})
-    #if mouse was found, update parameters
+    #if mouse was found, update parameters; testing the type here is checking for errors
     if type(new_mouse) is not bool:
         control_mouse.setPosition(rx, ry, new_mouse)
         updateValuesOfTh(delta)
 
     #-----------------------------------------------------------------
-    #Step 4: some drawing of the selecter Mouse
+    #Step 4: some drawing of the selected Mouse
     #-----------------------------------------------------------------
     #draw countours
     output = Bextended.copy()
     #convert mouse coordinates to extended frame
     offset = np.empty_like(control_mouse.mouse)
-    offset.fill(40)
+    offset.fill(40)#the ofset was 40,40 up there [sorry for the magic number]
     translatedMouse = control_mouse.mouse + offset
-    #draw fixed dim rectangle around mouse
+    #draw 60x60 rectangle around mouse 
     output = jasf_cv.drawFixedDimAroundContourCenter(output, [translatedMouse], (200, 0, 200), np.array((60,60)))
-    #get fixed lenght rectangle image
+    #get fixed lenght (60,60) rectangle image of mouse
     mouseImg = jasf.cv.getRoiAroundContour(extendedInput, translatedMouse, dim = np.array((60,60)))
 
     #-----------------------------------------------------------------
@@ -304,11 +303,10 @@ while cam.isOpened():
     x,y,w,h = cv2.boundingRect(translatedMouse)
     X,Y = np.mgrid[x:x+w, y:y+h]
     grid = np.array(np.vstack((X.flatten(),Y.flatten())).transpose(), dtype=np.float32) 
-
-    #find flow
-    flowInput = Bextended.copy()
     flowComputer.setGrid(grid)
-    #the following will return the start and end point of every flow vector
+
+    #find flow; the output wil be the start and end point of every flow vector
+    flowInput = Bextended.copy()
     oldP, newP = flowComputer.apply(flowInput)
     #-----------------------------------------------------------------
     #Step 5.1: Filter Flow or flow filter
@@ -322,8 +320,13 @@ while cam.isOpened():
     if connectFilterOn:
         flowFilter_conectivity.setTh(flowCLowTh, flowCUpTh)
         oldP, newP = flowFilter_conectivity.apply(oldP, newP)
+        
+
     #-----------------------------------------------------------------
-    #Step 5.2 keep track of the highest value of flow
+    #Step 6.0 Processing Flow or process flow 
+    #-----------------------------------------------------------------
+    #-----------------------------------------------------------------
+    #Step 6.1 keep track of the highest value flow
     #-----------------------------------------------------------------
     #compute flow magnitudes
     flow = newP - oldP
@@ -333,46 +336,34 @@ while cam.isOpened():
     maxFlowNorm = flowNorm.max() if flow.shape[0] > 0 else 0.0
     #will need the max flow index to paint it differently later
     maxFlow_i = flowNorm.argmax() if maxFlowNorm > 0.0 else -1
-        
-    #this is used for plotting later
+
+    maxFlowOld, maxFlowNew = (oldP[maxFlow_i], newP[maxFlow_i]) if maxFlow_i > 0 else (np.zeros((2,1)), np.zeros((2,1)))
+
+    #-----------------------------------------------------------------
+    #Step 6.1 find average flow
+    #-----------------------------------------------------------------
+    averageOld, averageNew = rangePercentFlowComputer.averageFlow(oldP, newP)
+
+    #-----------------------------------------------------------------
+    #Step 7.0: Plotting
+    #-----------------------------------------------------------------
+    #plot highest magnitude
     iteration += 1
-    #-----------------------------------------------------------------
-    #Step 5.2.2 find 5% magnitude vectors
-    #-----------------------------------------------------------------
-    #sort flow endpoints according to its norm and get the last 5%(with highest magnitutes) 
-    #class1Th, class2Th, class3Th = readClassSettings()
-    #class1Th, class2Th, class3Th = class1Th/100.0, class2Th/100.0, class3Th/100.0
-    #-----------------------------------------------------------------
-    #Step 5.3 Draw flow and plot the highest magnitude vector
-    #-----------------------------------------------------------------
-    #the highest magnitude flow is paint as RED(0,0,255) while all the others are BLUE(255,0,0)
-    #the five percent highest magnitude vectors are painted as Green(0,255,0)
-    #-----------------------------------------------------------------
-    #draw every valid flow vector as blue
-    mouseImg = flowUtil.draw_flow(flowInput, oldP, newP, (255,0,0), 1, p=1, q=2, th=0.2, drawArrows=True)
-    #if there is a highest magnitude to paint, paint it red
-    if maxFlow_i != -1:
-        #first paint top X percent magnitude vectors as green and then the highest one as RED
-        #draw max flow
-        mouseImg = flowUtil.draw_flow(mouseImg, np.array([oldP[maxFlow_i]]), np.array([newP[maxFlow_i]]), (0,0,255), 1,
-                1, 2, th = 2.0, drawArrows=True)
     if iteration % 10 == 0 and control_show_plot:
         #we only plot every 10 iterations so we don't slow down the program too much. Also, we reduce by 10 the number
         #of points being ploted.
-        plot_y.append(maxFlowNorm)
-        plot_x.append(iteration)
-        points.set_data(plot_x, plot_y)
-        ax.set_xlim(np.min(plot_x), np.max(plot_x))
-        ax.set_ylim(np.min(plot_y), np.max(plot_y))
+        xData[0][0].append(iteration)
+        yData[0][0].append(maxFlowNorm)
+        plotData(axis[0,0], xData[0][0], yData[0][0])
         plt.pause(0.000005)
-    if len(plot_y) == 100:
+    if len(yData[0][0]) == 100:
         #we only show 100 points, so once the vector is complete we discard the first component
-        plot_y = plot_y[1:]
-        plot_x = plot_x[1:]
+        pass
+        #plot_y = plot_y[1:]
+        #plot_x = plot_x[1:]
 
-    #-----------------------------------------------------------------
-    #Step 6: Compute FFT and plot it
-    #-----------------------------------------------------------------
+
+    #plotting fft
     #the fft is computed with data from every iteration, while the plot shows only data every 10 iterations
     data2FFT.append(maxFlowNorm)
     if control_show_fft_fft and len(data2FFT) == control_array['frames2FFT']:
@@ -381,19 +372,28 @@ while cam.isOpened():
         #we need to shift to make sure the zero frequency is centered
         f = np.fft.fftshift(jasf.math.fft(data2FFT, fft_N))
         freq = np.fft.fftshift(np.fft.fftfreq(fft_N))
-        fft_points.set_data(freq, f)
-        fft_ax.set_xlim(np.min(freq), np.max(freq))
-        fft_ax.set_ylim(0.0, np.max(f))
+
+        plotData(axis[0,1], freq, f)
         #we pause so the screen has time to update(apparently this is neccessary)
         plt.pause(0.000005)
 
         #discard the data that was just processed
         data2FFT = []
+
     #-----------------------------------------------------------------
-    #Step Final: Show images 
+    #Step 8.0 Draw flow 
     #-----------------------------------------------------------------
-    jasf.cv.imshow(['input', 'B', 'otsuTh', 'clean+filter', 'output', 'mouseImg'],\
-            [frame, B, 255*otsu_threshold, 255*filterSmall, output, mouseImg])
+    #draw every valid flow vector with magnitude > 0.2 as BLUE
+    #the flow of maximum magnitude is drawn GREEN and the mean flow is RED
+    #-----------------------------------------------------------------
+    mouseImg = flowUtil.draw_flow(flowInput, oldP, newP, jasf.cv.blue, 1, p=1, q=2, th=0.2, drawArrows=True)
+    mouseImg = flowUtil.draw_flow(mouseImg, maxFlowOld.reshape(1,1,2), maxFlowNew.reshape(1,1,2), jasf.cv.green, 2, drawArrows=True)
+    mouseImg = flowUtil.draw_flow(mouseImg, averageOld.reshape(1,1,2), averageNew.reshape(1,1,2), jasf.cv.red, 2, drawArrows=True)
+    #-----------------------------------------------------------------
+    #Step 8.0: Show images 
+    #-----------------------------------------------------------------
+    jasf.cv.imshow(['B', 'otsuTh', 'clean+filter', 'tracking', 'flowImg'],\
+            [B, 255*otsu_threshold, 255*filterSmall, output, mouseImg])
 
 
 cv2.destroyAllWindows()

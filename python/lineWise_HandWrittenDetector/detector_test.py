@@ -64,6 +64,7 @@ def operationOnLineDate(data, s):
 
 
 def plotData(ax, y):
+    #clear the current axis
     ax.cla()
     ax.plot(range(len(y)), y, marker='o', linestyle='--')
     ax.tick_params(axis='both', which='both', bottom='off', top='off', labelbottom='off')

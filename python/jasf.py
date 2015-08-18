@@ -82,8 +82,8 @@ class jasf_ratFinder:
 
 class cv:
     red = (0,0,255)
-    blue = (0,255,0)
-    green = (255,0,0)
+    blue = (255,0,0)
+    green = (0,255,0)
 
     def __init__():
         raise Exception('This class should no be instantiated!')
