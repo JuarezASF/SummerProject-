@@ -18,13 +18,17 @@ from flowUtil import FlowComputer
 import flowUtil
 import rangePercentFlowComputer
 import windowFlowUtil
-from inputParse import parseInput
+
+def help():
+    print 'usage: python main.py option=choice'
+    print 'options:'
+    print 'flowComputer: regular, rangePercent_regular, rangePercent_windowFlow, windowFlow'
 
 #videos will be read from this path
 control_Path2VideoFiles = '../videoCleanExperiment/output/fallingMouse/'
 control_Path2VideoFiles = '../../video/mp4/'
 control_settings = {'control_mode':'run'}
-control_inputDict = parseInput(sys.argv)
+control_inputDict = jasf.parseInput(sys.argv)
 
 videoFiles = list(p for p in pathlib.Path(control_Path2VideoFiles).iterdir() if p.is_file() and p.name[0] != '.')
 videoFiles.sort(key = lambda x: x.name)
@@ -52,7 +56,18 @@ def onVideoChange(index):
 jasf_cv.setTrackbar('video file', 0, len(videoFiles)-1, onCallBack = onVideoChange, window_name='settings')
 jasf.cv.setManyTrackbars(['th', 'max', 'delta', 'dilateSize', 'erodeSize', 'LRA'], [0, 100, 4, 5, 0, 1], [400, 400, 10, 21, 21, 2])
 jasf.cv.setManyTrackbars(['flow_lowTh', 'flow_upTh', 'flowConect_lowTh', 'flowConect_upTh'], [2, 30, 160, 10000], [50, 50, 1000, 10000])
-jasf.cv.setManyTrackbars(['connectivityFilterOn', 'magnitudeFilterOn', 'class1', 'class2', 'class3'], [0, 0, 95, 85, 75], [1,1,100,100,100], i=1)
+jasf.cv.setManyTrackbars(['connectivityFilterOn', 'magnitudeFilterOn', 'rangePercent_min', 'rangePercent_max', 'windowFlow_size'],\
+        [0, 0, 90, 100, 3], [1,1,100,100,11], i=1)
+
+
+def onWindowFlowSizeChanged(val):
+    global flowComputerOption, flowComputer
+    if 'windowFlow' in flowComputerOption:
+        print 'changing window size for flow averaging to', val
+        flowComputer.setWindowSize(max(val,1))
+
+jasf_cv.setTrackbar('windowFlow_size', 3, 11, window_name = 'settings1', onCallBack=onWindowFlowSizeChanged)
+
 
 #####################################
 #Auxiliar Classes
@@ -82,6 +97,7 @@ data2FFT = []
 #####################################
 #Auxiliar Functions
 #####################################
+
 def setControlSetting(name, val):
     global control_settings
     control_settings[name] = val
@@ -94,8 +110,11 @@ def readSettings():
     """ read general settings """
     return jasf.cv.readManyTrackbars(['th', 'max', 'delta', 'dilateSize', 'erodeSize', 'LRA'])
 
-def readClassSettings():
-    return jasf.cv.readManyTrackbars(['class1', 'class2', 'class3'], i=1)
+def readRangePercentSettings():
+    return jasf.cv.readManyTrackbars(['rangePercent_min', 'rangePercent_max' ], i=1)
+
+def readWindowFlowSize():
+    return jasf.cv.readTrackbar('windowFlow_size', i=1)
 
 def readFlowSettings():
     """ read flow settings """
@@ -179,11 +198,12 @@ def askUserForInput(frame):
     #compute area and set the new thresholds
     updateValuesOfTh(delta)
     
-def plotData(ax, x,y):
+def plotData(ax, x,y, legend="legenda", options=dict()):
     #clear the current axis
     ax.cla()
     #plot
-    ax.plot(x, y, marker='o', linestyle='--')
+    ax.plot(x, y, marker='o', linestyle='--', **options)
+    ax.legend([legend])
     #ax.tick_params(axis='both', which='both', bottom='off', top='off', labelbottom='off')
 #########################################
 #Useful objects
@@ -305,9 +325,16 @@ while cam.isOpened():
     grid = np.array(np.vstack((X.flatten(),Y.flatten())).transpose(), dtype=np.float32) 
     flowComputer.setGrid(grid)
 
+    if 'rangePercent' in flowComputerOption:
+        minPercent,maxPercent = readRangePercentSettings()
+        flowComputer.setPercentageInterval(minPercent/100.0,maxPercent/100.0)
+
+
     #find flow; the output wil be the start and end point of every flow vector
     flowInput = Bextended.copy()
     oldP, newP = flowComputer.apply(flowInput)
+    if oldP.size == 0:
+        continue
     #-----------------------------------------------------------------
     #Step 5.1: Filter Flow or flow filter
     #-----------------------------------------------------------------
@@ -320,42 +347,39 @@ while cam.isOpened():
     if connectFilterOn:
         flowFilter_conectivity.setTh(flowCLowTh, flowCUpTh)
         oldP, newP = flowFilter_conectivity.apply(oldP, newP)
-        
-
     #-----------------------------------------------------------------
     #Step 6.0 Processing Flow or process flow 
     #-----------------------------------------------------------------
     #-----------------------------------------------------------------
-    #Step 6.1 keep track of the highest value flow
-    #-----------------------------------------------------------------
-    #compute flow magnitudes
-    flow = newP - oldP
-    flowNorm = np.linalg.norm(flow, axis = 1)
-    #the following condition is necessary because not always the flow computation is successul.
-    #At the 1st iteration for example, there is no flow to compute
-    maxFlowNorm = flowNorm.max() if flow.shape[0] > 0 else 0.0
-    #will need the max flow index to paint it differently later
-    maxFlow_i = flowNorm.argmax() if maxFlowNorm > 0.0 else -1
-
-    maxFlowOld, maxFlowNew = (oldP[maxFlow_i], newP[maxFlow_i]) if maxFlow_i > 0 else (np.zeros((2,1)), np.zeros((2,1)))
-
-    #-----------------------------------------------------------------
     #Step 6.1 find average flow
     #-----------------------------------------------------------------
     averageOld, averageNew = rangePercentFlowComputer.averageFlow(oldP, newP)
+    averageFlow_norm = jasf.math.pointDistance(averageOld, averageNew)
+    averageFlow = averageNew - averageOld
+    averageFlow_angle = np.rad2deg(np.arctan2(averageFlow[0,1], averageFlow[0,0]))
 
     #-----------------------------------------------------------------
     #Step 7.0: Plotting
     #-----------------------------------------------------------------
-    #plot highest magnitude
+    #plot magnitude and angle of mean flow
     iteration += 1
     if iteration % 10 == 0 and control_show_plot:
         #we only plot every 10 iterations so we don't slow down the program too much. Also, we reduce by 10 the number
         #of points being ploted.
+
+        #plot magnitude
         xData[0][0].append(iteration)
-        yData[0][0].append(maxFlowNorm)
-        plotData(axis[0,0], xData[0][0], yData[0][0])
+        yData[0][0].append(averageFlow_norm)
+        plotData(axis[0,0], xData[0][0], yData[0][0], 'magnitude', {'color':'blue'})
+
+        #plot angle
+        xData[0][1].append(iteration)
+        yData[0][1].append(averageFlow_angle)
+        plotData(axis[0,1], xData[0][1], yData[0][1], 'angle', {'color':'green'})
+
+        #pause to allow matplot lib to show data
         plt.pause(0.000005)
+
     if len(yData[0][0]) == 100:
         #we only show 100 points, so once the vector is complete we discard the first component
         pass
@@ -365,7 +389,7 @@ while cam.isOpened():
 
     #plotting fft
     #the fft is computed with data from every iteration, while the plot shows only data every 10 iterations
-    data2FFT.append(maxFlowNorm)
+    data2FFT.append(averageFlow_norm)
     if control_show_fft_fft and len(data2FFT) == control_array['frames2FFT']:
         #this is the size of the computed fft
         fft_N = 100
@@ -387,8 +411,9 @@ while cam.isOpened():
     #the flow of maximum magnitude is drawn GREEN and the mean flow is RED
     #-----------------------------------------------------------------
     mouseImg = flowUtil.draw_flow(flowInput, oldP, newP, jasf.cv.blue, 1, p=1, q=2, th=0.2, drawArrows=True)
-    mouseImg = flowUtil.draw_flow(mouseImg, maxFlowOld.reshape(1,1,2), maxFlowNew.reshape(1,1,2), jasf.cv.green, 2, drawArrows=True)
-    mouseImg = flowUtil.draw_flow(mouseImg, averageOld.reshape(1,1,2), averageNew.reshape(1,1,2), jasf.cv.red, 2, drawArrows=True)
+    #mouseImg = flowUtil.draw_flow(mouseImg, averageOld.reshape(1,1,2), averageNew.reshape(1,1,2), jasf.cv.red, 2, drawArrows=True)
+
+    mouseImg = jasf.cv.drawFixedLenghtArrow(mouseImg, averageOld.reshape(1,1,2), np.deg2rad(averageFlow_angle), 30, color=jasf.cv.red)
     #-----------------------------------------------------------------
     #Step 8.0: Show images 
     #-----------------------------------------------------------------

@@ -2,6 +2,20 @@ import numpy as np
 import cv2
 from scipy import ndimage
 
+def parseInput(inputList):
+    if len(inputList) > 1:
+        inputList =  inputList[1:]
+    inputDict = dict()
+    for x in inputList:
+        x = x.split("=")
+        if len(x) == 2:
+            first, second = x
+            inputDict[first] = second
+        else:
+            first = x[0]
+            inputDict[first] = None
+    return inputDict
+
 def doNothing(val):
     pass
 class math:
@@ -93,6 +107,27 @@ class cv:
         h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
         w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
         return h,w
+
+    @staticmethod
+    def drawFixedLenghtArrow(img, point_start, angle, length, arrowAngle=np.pi/3, color = blue, thickness=2):
+        """ angle should be given in radias """
+        point_start = point_start.reshape(1,2)
+        point_end = point_start + length*np.array([np.cos(angle), np.sin(angle)]).reshape(1,2)
+
+        auxAngle = np.pi - arrowAngle + angle
+        arrowEnd1 = point_end + 0.2*length*np.array([np.cos(auxAngle), np.sin(auxAngle)]).reshape(1,2)
+
+        auxAngle = np.pi + arrowAngle + angle
+        arrowEnd2 = point_end + 0.2*length*np.array([np.cos(auxAngle), np.sin(auxAngle)]).reshape(1,2)
+
+        toDraw = np.vstack((point_start, point_end, point_end, arrowEnd1, point_end, arrowEnd2)).reshape(-1,2,2) 
+        toDraw = np.array(toDraw, dtype = np.int32)
+
+        #draw multiple lines
+        cv2.polylines(img, toDraw, isClosed = False, color = color, thickness=thickness)
+
+        return img
+
 
     @staticmethod
     def waitKey(time):

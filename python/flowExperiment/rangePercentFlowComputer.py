@@ -42,6 +42,9 @@ class RangePerCentFlowComputer_windowFlow(RangePerCentFlowComputer):
     def __init__(self, min=0.95, max=1.0):
         super(RangePerCentFlowComputer_windowFlow, self).__init__(windowFlowUtil.WindowFlowComputer(), min, max)
 
+    def setWindowSize(self, ws):
+        self.flowComputer.setWindowSize(ws)
+
 def averageFlow(prev, new):
     #average origin of flow:
     averageOrigin = np.average(prev.reshape(-1, 1, 2), axis = 0)

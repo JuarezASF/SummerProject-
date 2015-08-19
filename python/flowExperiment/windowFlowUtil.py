@@ -16,22 +16,20 @@ import pdb
 
 class WindowFlowComputer(flowUtil.FlowComputer):
     def __init__(self, ws=3):
-        self.windowSize = ws
+        self.setWindowSize(ws)
         self.lk_params = dict(  winSize  = (15,15),\
                                 maxLevel = 2,\
                                 criteria = (cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 10, 0.1))
 
+    def clearAverages(self):
         self.average1 = np.empty((0,0), dtype = np.uint8)
         self.average2 = np.empty((0,0), dtype = np.uint8)
         self.added2average1 = 0
         self.added2average2 = 0
 
-    def clearAverages(self):
-        self.average1 = np.empty((0,0), dtype = np.uint8)
-        self.average2 = np.empty((0,0), dtype = np.uint8)
-
     def setWindowSize(self, ws):
-        self.setWindowSize = ws
+        self.clearAverages()
+        self.windowSize = ws
 
     def isReady(self):
         return (self.added2average1 == self.windowSize) and (self.added2average2 == self.windowSize)
