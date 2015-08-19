@@ -299,20 +299,30 @@ while cam.isOpened():
         control_mouse.setPosition(rx, ry, new_mouse)
         updateValuesOfTh(delta)
 
-    #-----------------------------------------------------------------
-    #Step 4: some drawing of the selected Mouse
-    #-----------------------------------------------------------------
-    #draw countours
-    output = Bextended.copy()
     #convert mouse coordinates to extended frame
     offset = np.empty_like(control_mouse.mouse)
     offset.fill(40)#the ofset was 40,40 up there [sorry for the magic number]
     translatedMouse = control_mouse.mouse + offset
-    #draw 60x60 rectangle around mouse 
-    output = jasf_cv.drawFixedDimAroundContourCenter(output, [translatedMouse], (200, 0, 200), np.array((60,60)))
+
+    #-----------------------------------------------------------------
+    #Step 3.1: find angle orientation of the mouse
+    #this is done by looking at the rotation angle of the minimum bouding box arround the
+    #countourn of the mouse
+    #-----------------------------------------------------------------
+    #get angle of rotation in degrees
+    minimumAreaRectAroundMouse_center, _wh, minimumAreaRectAroundMouse_angle = cv2.minAreaRect(translatedMouse)
+    minimumAreaRectAroundMouse_center = np.array(minimumAreaRectAroundMouse_center).astype(np.int32).reshape(1,2)
+    #-----------------------------------------------------------------
+    #Step 4: some drawing of the selected Mouse
+    #also draw an arrow poiting at the minimum area rectangle orientation
+    #-----------------------------------------------------------------
+    #draw countours
+    output = Bextended.copy()
+    #draw 60x60 rectangle around mouse and other countourn boxes
+    output = jasf_cv.drawContours(output, [translatedMouse], fixedDimRect=True, fdr_dim=np.array((60,60)), fdr_color = (200,0,200))
+    output = jasf.cv.drawFixedLenghtArrow(output, minimumAreaRectAroundMouse_center, np.deg2rad(minimumAreaRectAroundMouse_angle), 20)
     #get fixed lenght (60,60) rectangle image of mouse
     mouseImg = jasf.cv.getRoiAroundContour(extendedInput, translatedMouse, dim = np.array((60,60)))
-
     #-----------------------------------------------------------------
     #Step 5: compute optical flow
     #-----------------------------------------------------------------
@@ -367,15 +377,20 @@ while cam.isOpened():
         #we only plot every 10 iterations so we don't slow down the program too much. Also, we reduce by 10 the number
         #of points being ploted.
 
-        #plot magnitude
+        #plot magnitude of mean flow
         xData[0][0].append(iteration)
         yData[0][0].append(averageFlow_norm)
         plotData(axis[0,0], xData[0][0], yData[0][0], 'magnitude', {'color':'blue'})
 
-        #plot angle
+        #plot angle of mean flow
         xData[0][1].append(iteration)
         yData[0][1].append(averageFlow_angle)
         plotData(axis[0,1], xData[0][1], yData[0][1], 'angle', {'color':'green'})
+
+        #plot angle of minimum bounding rectangle
+        xData[1][0].append(iteration)
+        yData[1][0].append(minimumAreaRectAroundMouse_angle)
+        plotData(axis[1,0], xData[1][0], yData[1][0], 'rotation angle', {'color':'red'})
 
         #pause to allow matplot lib to show data
         plt.pause(0.000005)
