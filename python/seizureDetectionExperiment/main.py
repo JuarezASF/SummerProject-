@@ -18,6 +18,7 @@ from flowUtil import FlowComputer
 import flowUtil
 import rangePercentFlowComputer
 import windowFlowUtil
+import json
 
 def help():
     print 'usage: python main.py option=choice'
@@ -54,11 +55,11 @@ def onVideoChange(index):
     askUserForInput(frame)
 
 jasf_cv.setTrackbar('video file', 0, len(videoFiles)-1, onCallBack = onVideoChange, window_name='settings')
-jasf.cv.setManyTrackbars(['th', 'max', 'delta', 'dilateSize', 'erodeSize', 'LRA'], [0, 100, 4, 5, 0, 1], [400, 400, 10, 21, 21, 2])
-jasf.cv.setManyTrackbars(['flow_lowTh', 'flow_upTh', 'flowConect_lowTh', 'flowConect_upTh'], [2, 30, 160, 10000], [50, 50, 1000, 10000])
-jasf.cv.setManyTrackbars(['connectivityFilterOn', 'magnitudeFilterOn', 'rangePercent_min', 'rangePercent_max', 'windowFlow_size'],\
-        [0, 0, 90, 100, 3], [1,1,100,100,11], i=1)
 
+#first load a dictionary with the current configuration and then set all trackbars at once
+paramDict = dict()
+with open('./paramDict.json', 'r') as f:
+    paramDict = json.load(f)
 
 def onWindowFlowSizeChanged(val):
     global flowComputerOption, flowComputer
@@ -66,7 +67,13 @@ def onWindowFlowSizeChanged(val):
         print 'changing window size for flow averaging to', val
         flowComputer.setWindowSize(max(val,1))
 
-jasf_cv.setTrackbar('windowFlow_size', 3, 11, window_name = 'settings1', onCallBack=onWindowFlowSizeChanged)
+for item in paramDict.items():
+    itemName = item[0]
+    itemVal = item[1]
+    if 'onCallBack' in itemVal.keys():
+        jasf_cv.setTrackbar(itemName, itemVal['currentVal'], itemVal['max'], i = itemVal['window'], onCallBack=locals()[itemVal['onCallBack']])
+    else:
+        jasf_cv.setTrackbar(itemName, itemVal['currentVal'], itemVal['max'], i = itemVal['window'])
 
 
 #####################################
@@ -105,6 +112,13 @@ def setControlSetting(name, val):
 def readControlSetting(name):
     global control_settings
     return control_settings[name]
+
+def readSettingsState():
+    global paramDict
+    for item in paramDict.items():
+        itemName, itemVal = item
+        paramDict[itemName]['currentVal'] = jasf.cv.readTrackbar(itemName, i=itemVal['window'])
+    return copy.deepcopy(paramDict)
 
 def readSettings():
     """ read general settings """
@@ -438,3 +452,9 @@ while cam.isOpened():
 
 cv2.destroyAllWindows()
 cam.release()
+
+#store state of system
+paramDict = readSettingsState()
+with open('./paramDict.json', 'w') as f:
+    print 'saving state of trackbars to', f.name
+    json.dump(paramDict, f)
