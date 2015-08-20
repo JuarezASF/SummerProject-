@@ -51,8 +51,20 @@ def onVideoChange(index):
     fn = videoFiles[index].absolute().as_posix() 
     print 'opening', fn
     cam = cv2.VideoCapture(fn)
+
     setControlSetting('control_mode', 'run')
     askUserForInput(frame)
+
+    setControlSetting('framesSinceStart', 0)
+    control_settings['currentVideoFileName'] = fn
+    if fn not in userInputData.keys():
+        userInputData[fn] = list()
+        setControlSetting('listOfKnownFrames_with_input', [])
+    else:
+        framesWithInput = [x['frame'] for x in userInputData[fn]]
+        setControlSetting('listOfKnownFrames_with_input', framesWithInput)
+        print 'list of frames with cuurent input for file', fn, ':\n', framesWithInput
+
 
 jasf_cv.setTrackbar('video file', 0, len(videoFiles)-1, onCallBack = onVideoChange, window_name='settings')
 
@@ -67,6 +79,8 @@ def onWindowFlowSizeChanged(val):
         print 'changing window size for flow averaging to', val
         flowComputer.setWindowSize(max(val,1))
 
+
+
 for item in paramDict.items():
     itemName = item[0]
     itemVal = item[1]
@@ -75,6 +89,10 @@ for item in paramDict.items():
     else:
         jasf_cv.setTrackbar(itemName, itemVal['currentVal'], itemVal['max'], i = itemVal['window'])
 
+
+userInputData = dict()
+with open('./userInputData.json', 'r') as f:
+    userInputData = json.load(f)
 
 #####################################
 #Auxiliar Classes
@@ -101,6 +119,8 @@ control_array = {}
 control_array['fps'] = int(cam.get(cv2.CAP_PROP_FPS) + 0.5)
 control_array['frames2FFT'] = 3*control_array['fps']
 data2FFT = []
+control_array['framesSinceStart'] = 0
+control_array['listOfKnownFrames_with_input'] = []
 #####################################
 #Auxiliar Functions
 #####################################
@@ -116,9 +136,15 @@ def readControlSetting(name):
 def readSettingsState():
     global paramDict
     for item in paramDict.items():
-        itemName, itemVal = item
+        itemName, itemVal = item[0], item[1]
         paramDict[itemName]['currentVal'] = jasf.cv.readTrackbar(itemName, i=itemVal['window'])
+
     return copy.deepcopy(paramDict)
+
+def setSettingsState(paramDict):
+    for item in paramDict.items():
+        itemName, itemVal = item[0], item[1]
+        jasf.cv.setTrackbarPos(itemName, itemVal['currentVal'], i=itemVal['window'])
 
 def readSettings():
     """ read general settings """
@@ -186,6 +212,10 @@ def askUserForInput(frame):
                 print 'position set!'
                 control_mouse.setPosition(rx, ry, mouse)
                 control_mouse.initialized = True
+
+                userInputData[control_settings['currentVideoFileName']].append({'frame':
+                    readControlSetting('framesSinceStart'), 'input':(rx,ry), 'settings_state':readSettingsState()}) 
+
 
     cv2.setMouseCallback('user input', onUserInputDblCklick)
     
@@ -271,6 +301,7 @@ while cam.isOpened():
         control_show_plot = not control_show_plot
     if readControlSetting('control_mode') == 'run':
         ret,frame = cam.read()
+        control_settings['framesSinceStart'] += 1 
     if readControlSetting('control_mode') == 'pause':
         continue
     if ret == False:
@@ -450,11 +481,16 @@ while cam.isOpened():
             [B, 255*otsu_threshold, 255*filterSmall, output, mouseImg])
 
 
-cv2.destroyAllWindows()
-cam.release()
 
 #store state of system
 paramDict = readSettingsState()
+print paramDict
 with open('./paramDict.json', 'w') as f:
     print 'saving state of trackbars to', f.name
     json.dump(paramDict, f)
+
+with open('./userInputData.json', 'w') as f:
+    print 'saving state of user input to', f.name
+    json.dump(userInputData, f)
+cv2.destroyAllWindows()
+cam.release()
