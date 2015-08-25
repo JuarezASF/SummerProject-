@@ -28,7 +28,7 @@ def help():
 #videos will be read from this path
 control_Path2VideoFiles = '../videoCleanExperiment/output/fallingMouse/'
 control_Path2VideoFiles = '../../video/mp4/'
-control_settings = {'control_mode':'run'}
+control_settings = {'control_mode':'run', 'currentVideoFileName':'NONE'}
 control_inputDict = jasf.parseInput(sys.argv)
 
 videoFiles = list(p for p in pathlib.Path(control_Path2VideoFiles).iterdir() if p.is_file() and p.name[0] != '.')
@@ -52,18 +52,40 @@ def onVideoChange(index):
     print 'opening', fn
     cam = cv2.VideoCapture(fn)
 
-    setControlSetting('control_mode', 'run')
-    askUserForInput(frame)
+    #get the filename from the index read. The name stores is just the filename, no path included
+    fn = videoFiles[index].name
+    setControlSetting('currentVideoFileName', fn)
 
-    setControlSetting('framesSinceStart', 0)
-    control_settings['currentVideoFileName'] = fn
+    #control_settings['currentVideoFileName'] = fn
     if fn not in userInputData.keys():
+        #add video name entry to dictionary of user inputs
+        print 'adding video', fn, ' to list os known videos'
         userInputData[fn] = list()
         setControlSetting('listOfKnownFrames_with_input', [])
     else:
+        #read userInput data and store the frame numbers with available data
         framesWithInput = [x['frame'] for x in userInputData[fn]]
         setControlSetting('listOfKnownFrames_with_input', framesWithInput)
-        print 'list of frames with cuurent input for file', fn, ':\n', framesWithInput
+        print 'list of frames with input for file', fn, ':\n', framesWithInput
+
+    cam.set(cv2.CAP_PROP_POS_FRAMES, 0)
+    ret, frame = cam.read()
+    cam.set(cv2.CAP_PROP_POS_FRAMES, 0)
+
+    setControlSetting('control_mode', 'run')
+    setControlSetting('framesSinceStart', 0)
+
+    if 0 in control_settings['listOfKnownFrames_with_input']:
+        #read current video file name
+        currentVideoFileName_aux = control_settings['currentVideoFileName']
+        #find in the user input the one corresponding to the current frame; the returned type is a list
+        userInputForThisFrame = filter(lambda x: x['frame'] == control_settings['framesSinceStart'], userInputData[currentVideoFileName_aux])
+        askUserForInput(frame, True, userInputForThisFrame[0])
+        #print a silly msg so we know something was done
+        print 'aha! we avoided that!'
+    else:
+        askUserForInput(frame)
+
 
 
 jasf_cv.setTrackbar('video file', 0, len(videoFiles)-1, onCallBack = onVideoChange, window_name='settings')
@@ -79,8 +101,6 @@ def onWindowFlowSizeChanged(val):
         print 'changing window size for flow averaging to', val
         flowComputer.setWindowSize(max(val,1))
 
-
-
 for item in paramDict.items():
     itemName = item[0]
     itemVal = item[1]
@@ -89,10 +109,38 @@ for item in paramDict.items():
     else:
         jasf_cv.setTrackbar(itemName, itemVal['currentVal'], itemVal['max'], i = itemVal['window'])
 
+"""
+userInputData is a dictionary where the keys are names of videos and the item is a list of dicts. Each element of this
+list contain three items: 'frame', 'input' and 'settings_state'.
+frame: an integer indicating the frame index of the input
+input: a tuple containing the x and y coordinate of the input
+settings_state: a dict containing the settings when the user clicked on the mouse
 
+The idea is that this data structure contains everything to recreate the user input.
+
+the userInputData is used on the following moments:
+    *when the user clicks on the mouse, a new entry is added to the dictionary
+    *when the user changes the video the dictionary is read for that entry; if there is no entry for the current video,
+    then a new one is created
+
+The program must keep track of the current frame number, when the frame number is equal the one where the input happend,
+the program will set all the settings and the mouse location for that indicated by the data.
+
+
+How to use it:
+    1. the current video filename is stored into control_settings['currentVideoFileName']
+    2. the current frames with input are stored into control_settings['listOfKnownFrames_with_input']
+    3. read the current input data with:
+        userInputData[control_settings['currentVideoFileName']]
+"""
 userInputData = dict()
-with open('./userInputData.json', 'r') as f:
-    userInputData = json.load(f)
+userInputData_file = './userInputData.json'
+if pathlib.Path(userInputData_file).is_file():
+    print 'loading user input from', userInputData_file
+    with open(userInputData_file, 'r') as f:
+        userInputData = json.load(f)
+else:
+    print 'initializing user inpur data as empty dictionary'
 
 #####################################
 #Auxiliar Classes
@@ -177,7 +225,7 @@ def updateValuesOfTh(area_delta):
     newTh_max = max(area + area_delta, 16)
     jasf.cv.setManyTrackbarsPos(['th', 'max'], [newTh, newTh_max])
 
-def askUserForInput(frame):
+def askUserForInput(frame, modeReadingFromData=False, userData=dict()):
     """Function will read the settings, find interesting contours and show then to the user so he can pick the correct
     contour """
     global control_mouse
@@ -190,34 +238,70 @@ def askUserForInput(frame):
 
     cnts = []
     control_mouse.initialized = False
+
+    def analyseUserInput(x,y):
+        """This function will be called in two cases:
+            *by the next functoin
+            *when there is some userInput stored from previous run
+
+            This piece of code was refactored in order to be used in these two cases
+            """
+        global control_mouse
+        #compute center of current contours and their distances to the user click
+        #'cnts' here will be set on the loop that is written after this function definition
+        centers = [jasf_cv.getCenterOfContour(c) for c in cnts]
+        distances = [np.linalg.norm(np.array(c) - np.array((x,y))) for c in centers]
+        #the mouse is the one closest to the user click
+        i = np.argmin(distances)
+        rx,ry = centers[i]
+        mouse = cnts[i] 
+
+        #the user cannot miss badly
+        if jasf.math.pointDistance((rx,ry), (x,y)) > 20:
+            print 'not close enough!'
+            pass
+        else: 
+            print 'position set!'
+            control_mouse.setPosition(rx, ry, mouse)
+            control_mouse.initialized = True
+
+            #add user input to dictionary of user inputs
+            userInputData[control_settings['currentVideoFileName']].append({'frame':
+                readControlSetting('framesSinceStart'), 'input':(rx,ry), 'settings_state':readSettingsState()}) 
+
+
     def onUserInputDblCklick(event, x, y, flags, params):
         """ mouse callback to set the rat position. This function gets the user press
         position and compare it with the known centers, picking the closest match. It will reject the chosen position if
         it is distant from the guessed centers"""
         global control_mouse
         if event == cv2.EVENT_LBUTTONDBLCLK:
-            #compute center of current contours and their distances to the user click
-            centers = [jasf_cv.getCenterOfContour(c) for c in cnts]
-            distances = [np.linalg.norm(np.array(c) - np.array((x,y))) for c in centers]
-            #the mouse is the one closest to the user click
-            i = np.argmin(distances)
-            rx,ry = centers[i]
-            mouse = cnts[i] 
-
-            #the user cannot miss badly
-            if jasf.math.pointDistance((rx,ry), (x,y)) > 20:
-                print 'not close enough!'
-                pass
-            else: 
-                print 'position set!'
-                control_mouse.setPosition(rx, ry, mouse)
-                control_mouse.initialized = True
-
-                userInputData[control_settings['currentVideoFileName']].append({'frame':
-                    readControlSetting('framesSinceStart'), 'input':(rx,ry), 'settings_state':readSettingsState()}) 
+            analyseUserInput(x,y)
 
 
-    cv2.setMouseCallback('user input', onUserInputDblCklick)
+    if modeReadingFromData:
+        rx,ry = userData['input']
+        setSettingsState(userData['settings_state'])
+
+        ##sorry for this code repetition starting here
+        #read parameters from settings window
+        th, th_max, delta, dilateSize, erodeSize, LRA = readSettings()
+        #select which image to use
+        input = inputList[LRA]
+        #get blue component
+        input = input[:,:,1]
+        input = input.copy()
+        #find contours
+        contourFinder.setParams(dilateSize, erodeSize, th, th_max)
+        cnts, otsu_threshold, filterSmall = contourFinder.detectInterestingContours(input)
+        ##code repetition ends here
+
+        #call analyse; hopefully this will already set control_mouse.initialized and the loop will not run
+        analyseUserInput(rx,ry)
+
+    else:
+        #in this case, the loop should run
+        cv2.setMouseCallback('user input', onUserInputDblCklick)
     
     #ask user to select contour
     while  control_mouse.initialized == False:
@@ -302,6 +386,14 @@ while cam.isOpened():
     if readControlSetting('control_mode') == 'run':
         ret,frame = cam.read()
         control_settings['framesSinceStart'] += 1 
+        if control_settings['framesSinceStart'] in control_settings['listOfKnownFrames_with_input']:
+            #read current video file name
+            currentVideoFileName_aux = control_settings['currentVideoFileName']
+            #find in the user input the one corresponding to the current frame; the returned type is a list
+            userInputForThisFrame = filter(lambda x: x['frame'] == control_settings['framesSinceStart'], userInputData[currentVideoFileName_aux])
+            askUserForInput(frame, True, userInputForThisFrame[0])
+            #print a silly msg so we know something was done
+            print 'aha! we avoided that!'
     if readControlSetting('control_mode') == 'pause':
         continue
     if ret == False:
@@ -484,7 +576,7 @@ while cam.isOpened():
 
 #store state of system
 paramDict = readSettingsState()
-print paramDict
+print 'here is the current configuration', paramDict
 with open('./paramDict.json', 'w') as f:
     print 'saving state of trackbars to', f.name
     json.dump(paramDict, f)
