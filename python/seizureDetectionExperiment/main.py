@@ -86,6 +86,8 @@ def onVideoChange(index):
     else:
         askUserForInput(frame)
 
+    resetPlotData()
+
 
 
 jasf_cv.setTrackbar('video file', 0, len(videoFiles)-1, onCallBack = onVideoChange, window_name='settings')
@@ -361,6 +363,11 @@ import matplotlib.pyplot as plt
 plot, axis = plt.subplots(2,3)
 xData = [[list() for j in range(axis.shape[1])] for i in range(axis.shape[0])]
 yData = [[list() for j in range(axis.shape[1])] for i in range(axis.shape[0])]
+def resetPlotData():
+    for i in range(len(xData)):
+        for j in range(len(xData[0])):
+            xData[i][j] = list()
+            yData[i][j] = list()
 #used to keep track of iterations
 iteration = 0
 #initializate video and ask user for input
@@ -506,26 +513,27 @@ while cam.isOpened():
     averageFlow_angle = np.rad2deg(np.arctan2(averageFlow[0,1], averageFlow[0,0]))
 
     #-----------------------------------------------------------------
-    #Step 7.0: Plotting
+    #Step 7.0: Plotting plot data 
     #-----------------------------------------------------------------
     #plot magnitude and angle of mean flow
     iteration += 1
     if iteration % 10 == 0 and control_show_plot:
         #we only plot every 10 iterations so we don't slow down the program too much. Also, we reduce by 10 the number
         #of points being ploted.
+        currentFrameNumber = control_settings['framesSinceStart']
 
         #plot magnitude of mean flow
-        xData[0][0].append(iteration)
+        xData[0][0].append(currentFrameNumber)
         yData[0][0].append(averageFlow_norm)
         plotData(axis[0,0], xData[0][0], yData[0][0], 'magnitude', {'color':'blue'})
 
         #plot angle of mean flow
-        xData[0][1].append(iteration)
+        xData[0][1].append(currentFrameNumber)
         yData[0][1].append(averageFlow_angle)
         plotData(axis[0,1], xData[0][1], yData[0][1], 'angle', {'color':'green'})
 
         #plot angle of minimum bounding rectangle
-        xData[1][0].append(iteration)
+        xData[1][0].append(currentFrameNumber)
         yData[1][0].append(minimumAreaRectAroundMouse_angle)
         plotData(axis[1,0], xData[1][0], yData[1][0], 'rotation angle', {'color':'red'})
 

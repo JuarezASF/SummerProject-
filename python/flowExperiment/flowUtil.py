@@ -3,6 +3,7 @@ sys.path.insert(0, '../')
 import numpy as np
 import cv2
 import matplotlib.pyplot as plt
+import pdb
 
 import jasf
 from jasf import jasf_cv
@@ -22,9 +23,15 @@ class FlowComputer(object):
     def setGrid(self, g):
         self.grid = g
 
-    def apply(self, img, paramsDict=dict()):
+    def apply(self, img, paramsDict=dict(), returnIndexes=False):
         """ret = 0 if nothing is moving, 1 if someone is moving in the back and 2 if the
-        camera is moving """
+        camera is moving
+        
+        If boolean reurnIndexes is set ,return all points of start and end and the points
+        where flow was sucessfully computer.
+
+        Case the boolean is not set, returno only good start and end points
+        """
         if self.prev.shape == (0,0):
             self.prev = img.copy()
             return self.grid, self.grid
@@ -36,6 +43,9 @@ class FlowComputer(object):
         goodIndex = np.where(st == 1)[0]
         good_new = p1[goodIndex]
         good_old = self.grid[goodIndex]
+
+        if returnIndexes:
+            return self.grid, p1, goodIndex
 
         return good_old, good_new
 
@@ -75,7 +85,6 @@ def draw_flow(img, pts, next_pts, flowColor = (0,0,255), flowThickness = 1, p=1,
     #draw multiple lines
     cv2.polylines(img, lines, isClosed = False, color = flowColor, thickness=flowThickness)
 
-    import pdb
     if drawArrows:
         #compute flow direction
         flow = lines[:, 1, :] - lines[:,0,:]
@@ -225,4 +234,4 @@ if __name__ == "__main__":
 
 
     cv2.destroyAllWindows()
-    cam.close()
+    cam.release()
