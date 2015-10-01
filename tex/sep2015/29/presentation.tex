@@ -1,0 +1,201 @@
+\documentclass{beamer}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage{graphicx}			%para imagens
+\usepackage{epstopdf} 			%resolve problemas eps-pdf
+\usepackage{fancyhdr}			% para o cabeçalho bonito
+\usepackage{caption}				%para legendas
+\usepackage{placeins} 			%controlar o lugar dos floats
+\usepackage{color}
+\usepackage{url}
+\renewcommand{\UrlFont}{\tiny}
+\usepackage{relsize}
+\usepackage{hyperref}
+
+\usetheme{Dresden}
+\usecolortheme{orchid}
+\setbeamertemplate{navigation symbols}{}
+
+\newcommand{\HRule}{\rule{\linewidth}{0.5mm}}
+
+\title{Video Based Mice Seizure Detection}
+\author{Juarez Sampaio}
+\titlegraphic{\leavevmode\smash{\raisebox{5.5cm}{\includegraphics[width=0.6\textwidth]{./unbLogo.jpg}}}}
+\institute{Universidade de Brasília}
+\date{\today}
+
+
+\begin{document}
+\begin{frame}
+        \titlepage
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Content}
+  \begin{itemize}
+     \item Ideas to discuss
+       \begin{itemize}
+           \item Dense optical flow is actually good
+           \item What are the shadows in the Eulerian magnified video?
+           \item Flow Difference
+       \end{itemize}
+  \end{itemize}
+\end{frame}
+
+
+\begin{frame}
+  \frametitle{Dense optical flow is actually good}
+  \only<1-4>{This came out from a discussion with Professor Fábio}
+  \begin{itemize}
+
+      \only<1-4>{
+      \uncover<1-4>{\item Suppose we define a small region of the image to compute a sparse flow}
+      \uncover<2-4>{\item The sparse flow computation will solve a minimization problem}
+      \uncover<3-4>{\item Even though we are computing flow for a small region, we do send the entire
+      image to the algorithm}
+      \only<4-4>{\item Problem: a point inside the area of interest(small region) may be mapped to a point far a way
+      from its previous known position.}
+      }
+      \uncover<5->{\item I'm looking for 20 points in a 10 km by 10 km square. At time t, point A is at position (0,0).
+        At time t+$\Delta t$ I see a point that looks like A, but at position (10,10)km. Because I'm only
+        looking for 20 points and I'm a minimization algorithm, I'll say A moved from (0,0) to (10,10) in
+        $\Delta t$.}
+      \uncover<6->{\item Suppose now that I'm looking for 1 million points inside that same square. At time $t +\Delta t$ it is very
+        unlikely that anyone moved from (0,0) to (10,10). Thus, I'll discard this possibility and say that point A must
+        be near its previous known position. Even though there's a point at (10,10) that looks exactly like A at the
+        previous time, I'll won't consider it to be A, because it is too far away.}
+  \end{itemize}
+\end{frame}
+
+
+\begin{frame}
+  \frametitle{Dense optical flow is actually good}
+  \begin{block}{The point is}
+       We'll have less noise in optical flow computation if we use a dense grid.
+  \end{block}
+\end{frame}
+
+\begin{frame}
+  \frametitle{What are the shadows in the magnified video?}
+  \begin{itemize}
+      \only<1-2>{
+      \uncover<1-2>{\item For a fixed pixel $(i,j)$ in the image, plot its intensity value as a discrete function
+      $I_{i,j}(k)$ in the interval of interest of length T. You'll have $N = \frac{T}{\Delta T}$ points to plot,
+      $\Delta T$ being the sampling time}
+      \uncover<2>{\item This function can be decomposed into a sum of N sinusoidals inside the interval of interest
+      \begin{equation}
+        I_{i,j}(k) = \sum_{L=0}^{N-1} a_n \cos(\frac{2\pi}{N}L k) + b_n \sin(\frac{2\pi}{N}L k)
+      \end{equation}
+      }
+      }
+      \uncover<3->{\item Or, in complex exponential form
+      \begin{equation}
+        I_{(i,j)}(k) = \sum_{L=0}^{N-1} d_n e^{j\frac{2\pi}{N}L k}
+      \end{equation}
+      }
+      \uncover<4->{\item The $d_n$ coefficients can be computed with the discrete Fourrier Transform.}
+      \uncover<5>{\item Part of Eulerian magnification consists in applying a frequency filter the change de $d_n$
+      coefficients as a function of n. The idea is to increase those coefficients so high frequency components are more
+      obviously noted.}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{What are the shadows in the magnified video?}
+  \begin{itemize}
+      \only<1-3>{
+      \uncover<1-3>{\item Remember however that we're dealing with pixel values. They are limited to a fixed range of
+      values.}
+      \uncover<2-3>{\item In openCV, for example, any value of pixel higher than 255 is set to 255. That is, 255 is the
+      value for the brightest white, and nothing can be set brighter than the brightest white.}
+      \uncover<3>{\item Our new function, after the magnification, is thus:
+      \begin{equation}
+        E_{i,j}(k) = min(\sum_{L=0}^{N-1} G(n)d_n e^{j\frac{2\pi}{N}L k}, 255)
+      \end{equation}
+      }
+      }
+      \only<4-5>{
+      \uncover<4-5>{\item On the other hand, we cannot get darker than the darkest black(pixel value = 0)}
+      \uncover<5>{ \item Thus, we correct again:
+      \begin{equation}
+        E_{i,j}(k) = max(0,min(\sum_{L=0}^{N-1} G(n)d_n e^{j\frac{2\pi}{N}L k}, 255))
+      \end{equation}
+      }
+      }
+      \uncover<6->{ \item I propose that the shadows we're observing is a result of the saturations of the system. The gain
+      being applied is so high that any slight increase in intensity value produces a bright white and any slight
+      decrease produces a dark black.}
+      \uncover<7->{ \item When a mouse(white object) moves from A to B, point A became darker because it no longer hold a
+      white pixel and point B hold now something brighter than previously it did. Due to saturation, A becomes black and
+      B becomes white}
+      \uncover<8>{ \item Ideally, only a pixel belonging to the fastest movement in the video should be mapped to 255.}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Solving shadows}
+  \begin{block}{Solution}
+        Reduce frequency gain in order to avoid saturation.
+  \end{block}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Flow Difference}
+  This is Fábio's approach to study the seizure
+  \begin{itemize}
+      \only<1>{
+      \item Our previous idea was that the flow field of a seizure event would have a high frequency
+      component.
+      \item The new approach is based on that same assumption, we simply use a different way of looking at it
+      \item First we compute the vectorial difference between two consecutive flows. This correspond, in some sense I'm
+        sure, to the spatial second derivative of the image.
+      \item Remember that the laplacian operations corresponds to a high pass filter. We're here looking to the effect
+        of the high frequency components
+      \item We now construct an image with magnitude of the flow difference at each point
+      \item We take the 2 dimensional Fourrier Transform of this image.
+        }
+      \only<2>{\item Vidal says that during seizures, it will be easy do detect high frequency by looking at points of the
+      magnitude spectrum distant from the origin.}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Flow Difference}
+  My comments on the approach:
+  \begin{itemize}
+      \only<1-3>{\uncover<1-3>{
+            \item Disadvantage: In order to compute the FFT of the magnitude image, it is interesting if we compute the flow
+      on a dense grid. On my current demo, I compute flow for every point.
+      }\uncover<2-3>{
+      \item The problem of a sparse grid is that you'll have a flow difference magnitude image with spikes: it can only
+        be different than zero in points where you actually computed the flow.
+        }\uncover<3-3>{
+      \item Experimentally(and it reminded me of results in one dimensional FFT, and I'm sure this is can be shown for
+        two dimensional) by running FFT on a 2 dimensional image with spikes here and there, you get a FFT that has
+        spikes over the entire spectrum. I feel it is also periodic. 
+        }}
+
+      \uncover<4->{
+            \item I suggest that we can still run it on a sparse grid. When running the FFT though, we downsample the
+              flow difference magnitude image so it only contains points where we computer the flow. 
+      }\uncover<5->{
+      \item I have implemented demos of the proposed methodoly and, so far, tested it on a 5 sec video. As you can
+        imagine, computing a dense flow, taking its difference, its magnitude and then its DFT is computationally heavy
+        and it becomes cumbersome to run experiments.
+        }\uncover<6->{
+      \item I have not showed Vidal the results so far. More experiments are required before we can drawn any
+        conclusion. 
+        }
+  \end{itemize}
+\end{frame}
+
+
+\begin{frame}
+  \frametitle{Conclusion}
+  \begin{block}{}
+    Dr. Vidal is proposed a methodology based on the 2 dimensional fourrier transform of the flow difference. The method
+    is terribly heavy and needs more results so we evaluate if it is worth the trouble.
+  \end{block}
+\end{frame}
+\end{document}
