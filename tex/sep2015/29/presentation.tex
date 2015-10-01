@@ -1,4 +1,8 @@
 \documentclass{beamer}
+
+\mode<presentation>{}
+
+%preambule
 \usepackage[T1]{fontenc}
 \usepackage[utf8]{inputenc}
 \usepackage{lmodern}
@@ -39,6 +43,8 @@
            \item Dense optical flow is actually good
            \item What are the shadows in the Eulerian magnified video?
            \item Flow Difference
+           \item Flow Difference on a sparse grid
+           \item Stages of the FDM FFT
        \end{itemize}
   \end{itemize}
 \end{frame}
@@ -46,7 +52,7 @@
 
 \begin{frame}
   \frametitle{Dense optical flow is actually good}
-  \only<1-4>{This came out from a discussion with Professor Fábio}
+  \only<1-4>{This came out from a discussion with Professor Flávio}
   \begin{itemize}
 
       \only<1-4>{
@@ -85,18 +91,18 @@
       $\Delta T$ being the sampling time}
       \uncover<2>{\item This function can be decomposed into a sum of N sinusoidals inside the interval of interest
       \begin{equation}
-        I_{i,j}(k) = \sum_{L=0}^{N-1} a_n \cos(\frac{2\pi}{N}L k) + b_n \sin(\frac{2\pi}{N}L k)
+        I_{i,j}(k) = \sum_{L=0}^{N-1} a_L \cos(\frac{2\pi}{N}L k) + b_L \sin(\frac{2\pi}{N}L k)
       \end{equation}
       }
       }
       \uncover<3->{\item Or, in complex exponential form
       \begin{equation}
-        I_{(i,j)}(k) = \sum_{L=0}^{N-1} d_n e^{j\frac{2\pi}{N}L k}
+        I_{(i,j)}(k) = \sum_{L=0}^{N-1} d_L e^{j\frac{2\pi}{N}L k}
       \end{equation}
       }
-      \uncover<4->{\item The $d_n$ coefficients can be computed with the discrete Fourrier Transform.}
-      \uncover<5>{\item Part of Eulerian magnification consists in applying a frequency filter the change de $d_n$
-      coefficients as a function of n. The idea is to increase those coefficients so high frequency components are more
+      \uncover<4->{\item The $d_L$ coefficients can be computed with the discrete Fourrier Transform.}
+      \uncover<5>{\item Part of Eulerian magnification consists in applying a frequency filter the change de $d_L$
+      coefficients as a function of L. The idea is to increase those coefficients so high frequency components are more
       obviously noted.}
   \end{itemize}
 \end{frame}
@@ -111,7 +117,7 @@
       value for the brightest white, and nothing can be set brighter than the brightest white.}
       \uncover<3>{\item Our new function, after the magnification, is thus:
       \begin{equation}
-        E_{i,j}(k) = min(\sum_{L=0}^{N-1} G(n)d_n e^{j\frac{2\pi}{N}L k}, 255)
+        E_{i,j}(k) = min(\sum_{L=0}^{N-1} G(L)d_L e^{j\frac{2\pi}{N}L k}, 255)
       \end{equation}
       }
       }
@@ -119,15 +125,15 @@
       \uncover<4-5>{\item On the other hand, we cannot get darker than the darkest black(pixel value = 0)}
       \uncover<5>{ \item Thus, we correct again:
       \begin{equation}
-        E_{i,j}(k) = max(0,min(\sum_{L=0}^{N-1} G(n)d_n e^{j\frac{2\pi}{N}L k}, 255))
+        E_{i,j}(k) = max(0,min(\sum_{L=0}^{N-1} G(L)d_L e^{j\frac{2\pi}{N}L k}, 255))
       \end{equation}
       }
       }
       \uncover<6->{ \item I propose that the shadows we're observing is a result of the saturations of the system. The gain
       being applied is so high that any slight increase in intensity value produces a bright white and any slight
       decrease produces a dark black.}
-      \uncover<7->{ \item When a mouse(white object) moves from A to B, point A became darker because it no longer hold a
-      white pixel and point B hold now something brighter than previously it did. Due to saturation, A becomes black and
+      \uncover<7->{ \item When a mouse(white object) moves from A to B, point A becomes darker because it no longer
+      holds a white pixel and point B holds now something brighter than previously it did. Due to saturation, A becomes black and
       B becomes white}
       \uncover<8>{ \item Ideally, only a pixel belonging to the fastest movement in the video should be mapped to 255.}
   \end{itemize}
@@ -142,17 +148,15 @@
 
 \begin{frame}
   \frametitle{Flow Difference}
-  This is Fábio's approach to study the seizure
+  \uncover<1>{This is Flávio's approach to study the seizure}
   \begin{itemize}
       \only<1>{
       \item Our previous idea was that the flow field of a seizure event would have a high frequency
       component.
       \item The new approach is based on that same assumption, we simply use a different way of looking at it
       \item First we compute the vectorial difference between two consecutive flows. This correspond, in some sense I'm
-        sure, to the spatial second derivative of the image.
-      \item Remember that the laplacian operations corresponds to a high pass filter. We're here looking to the effect
-        of the high frequency components
-      \item We now construct an image with magnitude of the flow difference at each point
+        sure, to the temporal second derivative of the image.
+      \item We now construct an image with the magnitude of the flow difference at each point
       \item We take the 2 dimensional Fourrier Transform of this image.
         }
       \only<2>{\item Vidal says that during seizures, it will be easy do detect high frequency by looking at points of the
@@ -178,14 +182,13 @@
 
       \uncover<4->{
             \item I suggest that we can still run it on a sparse grid. When running the FFT though, we downsample the
-              flow difference magnitude image so it only contains points where we computer the flow. 
+              flow difference magnitude image so it only contains points where we computed the flow. 
       }\uncover<5->{
       \item I have implemented demos of the proposed methodoly and, so far, tested it on a 5 sec video. As you can
         imagine, computing a dense flow, taking its difference, its magnitude and then its DFT is computationally heavy
         and it becomes cumbersome to run experiments.
         }\uncover<6->{
-      \item I have not showed Vidal the results so far. More experiments are required before we can drawn any
-        conclusion. 
+      \item More experiments are required before we can drawn any conclusion. 
         }
   \end{itemize}
 \end{frame}
@@ -194,8 +197,55 @@
 \begin{frame}
   \frametitle{Conclusion}
   \begin{block}{}
-    Dr. Vidal is proposed a methodology based on the 2 dimensional fourrier transform of the flow difference. The method
-    is terribly heavy and needs more results so we evaluate if it is worth the trouble.
+    Dr. Vidal proposed a methodology based on 2 dimensional fourrier transform of the flow difference. The method
+    is computationally heavy and needs more results so we evaluate if it is worth the trouble.
   \end{block}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Flow Difference on a sparse grid}
+  Those are samples of the FFT obtained when setting the flow to a sparse grid. We notice periodicity in the spectrum.
+  \only<1>{
+  \begin{figure}[!htb]
+    \begin{minipage}{0.4\textwidth}
+            \includegraphics[scale=0.4]{./mag_0002.jpg}
+          \end{minipage} \hspace{20pt} 
+    \begin{minipage}{0.4\textwidth}
+            \includegraphics[scale=0.4]{./mag_0002.jpg}
+    \end{minipage}
+    \captionof{figure}{FFT of the magnitude of the flow difference where flow was computed on a sparse grid containing one
+    every 5 pixels both in x and y. }
+  \end{figure}
+  }
+  \only<2>{
+  \begin{figure}[!htb]
+    \begin{minipage}{0.4\textwidth}
+      \includegraphics[scale=0.4]{./magd10_0011.jpg}
+          \end{minipage} \hspace{20pt} 
+    \begin{minipage}{0.4\textwidth}
+      \includegraphics[scale=0.4]{./magd10_0027.jpg}
+    \end{minipage}
+    \captionof{figure}{This time the spacing is of 10.}
+  \end{figure}
+  }
+\end{frame}
+
+\begin{frame}
+  \frametitle{Stages of the FDM FFT}
+  Some pictures to illustrate discussion.
+  \only<1>{
+  \begin{figure}[!htb]
+    \begin{minipage}{0.4\textwidth}
+            \centering
+            \includegraphics[scale=0.4]{./diff_0041.jpg}
+            \captionof{figure}{The magnitude of flow difference at each point.}
+          \end{minipage} \hspace{20pt} 
+    \begin{minipage}{0.4\textwidth}
+            \centering
+            \includegraphics[scale=0.4]{./mag_0041.jpg}
+            \captionof{figure}{The FFT of the previous image}
+    \end{minipage}
+  \end{figure}
+  }
 \end{frame}
 \end{document}

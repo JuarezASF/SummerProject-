@@ -19,7 +19,7 @@ if __name__ == "__main__":
     ret, frame = cam.read()
     flowComputer = flowUtil.FlowComputer()
     width, height = frame.shape[1], frame.shape[0]
-    grid = flowUtil.getGrid(0,0, width-1, height-1, 1,1) 
+    grid = flowUtil.getGrid(0,0, width-5, height-5, 10,10) 
     flowComputer.setGrid(grid)
     #initialize flowComputer with first frame(at this point, we have only one image and no flow is computer)
     flowComputer.apply(frame)
