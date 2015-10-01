@@ -37,7 +37,7 @@ class FlowDiffComputer:
         self.previousStartP, self.previousEndP, self.previousGoodI = self.currentStartP, self.currentEndP, self.currentGoodI
 
         #compute new flow[require flow to answer back with all points and the list of valid indexes]
-        self.currentStartP, self.currentEndP, self.currentGoodI  = flowComputer.apply(frame, returnIndexes=True)
+        self.currentStartP, self.currentEndP, self.currentGoodI  = self.flowComputer.apply(frame, returnIndexes=True)
 
 
         #if we have at least one inex valid in both valid idexes(previous and current iteration)
@@ -75,7 +75,7 @@ class FlowDiffComputer:
             else:
                 return flowDiffStartP.astype(np.uint64), flowDiffNorm
         else:
-            grid = flowComputer.grid.astype(np.uint64)
+            grid = self.flowComputer.grid.astype(np.uint64)
             if returnIndo2Draw:
                 return grid, grid
             else:
@@ -120,11 +120,11 @@ if __name__ == "__main__":
 
         #paint a black frame with the flow mag in the points where there was flow to compare
         output = allBlack.copy()
-        output[flowP[:,1], flowP[:,0]] = flowMag
+        output[flowP[:,1], flowP[:,0]] = 10*flowMag
 
         #show input frame and frame with flow arrows drawn
         cv2.imshow('input', frame)
-        cv2.imshow('flowMag', output)
+        cv2.imshow('flowDiffMag', output)
 
     cv2.destroyAllWindows()
     cam.release()
